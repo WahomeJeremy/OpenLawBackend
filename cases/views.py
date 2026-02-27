@@ -1,4 +1,6 @@
 from rest_framework import generics, serializers
+from rest_framework.response import Response
+from django.db.models import Q
 from .models import Case
 
 
@@ -14,9 +16,24 @@ class CaseSerializer(serializers.ModelSerializer):
 
 
 class CaseListView(generics.ListAPIView):
-    """List all cases"""
+    """List all cases with optional search functionality"""
     queryset = Case.objects.all()
     serializer_class = CaseSerializer
+    
+    def get_queryset(self):
+        queryset = Case.objects.all()
+        search = self.request.query_params.get('search', None)
+        
+        if search:
+            queryset = queryset.filter(
+                Q(case_number__icontains=search) |
+                Q(case_name__icontains=search) |
+                Q(plaintiff__icontains=search) |
+                Q(defendant__icontains=search) |
+                Q(parties__icontains=search)
+            )
+        
+        return queryset
 
 
 class CaseDetailView(generics.RetrieveAPIView):
