@@ -11,6 +11,10 @@ class Command(BaseCommand):
     help = 'Import land data from CSV files'
 
     def handle(self, *args, **options):
+        # Clear existing land data for clean import
+        Land.objects.all().delete()
+        self.stdout.write('Cleared existing land data for clean import')
+        
         # Import from 2013 CSV
         csv_2013_path = os.path.join(settings.BASE_DIR, 'Kenya_ELC_2013_clean.csv')
         if os.path.exists(csv_2013_path):
@@ -20,6 +24,9 @@ class Command(BaseCommand):
         csv_2019_path = os.path.join(settings.BASE_DIR, 'Kenya_ELC_2019.csv')
         if os.path.exists(csv_2019_path):
             self.import_from_csv(csv_2019_path, "2019")
+        
+        # After importing all land, now link cases to lands
+        self.link_all_cases_to_lands()
         
         self.stdout.write(self.style.SUCCESS('Land data import completed'))
 
@@ -87,6 +94,34 @@ class Command(BaseCommand):
                     self.stdout.write(f'Imported {count} land records from {year} data...')
         
         self.stdout.write(self.style.SUCCESS(f'Imported {count} land records from {year} CSV'))
+
+    def link_all_cases_to_lands(self):
+        """Link all cases to their corresponding land records"""
+        self.stdout.write('Linking all cases to land records...')
+        linked_count = 0
+        
+        for case in Case.objects.all():
+            # Get land references from case summary (where they were stored during case import)
+            land_refs = self.extract_land_references(case.summary or '')
+            
+            for land_ref in land_refs:
+                if land_ref.strip():
+                    try:
+                        # Find land record matching this reference
+                        land = Land.objects.filter(
+                            Q(title_number__icontains=land_ref.strip()) |
+                            Q(lr_number__icontains=land_ref.strip()) |
+                            Q(plot_number__icontains=land_ref.strip())
+                        ).first()
+                        
+                        if land and not land.cases.filter(id=case.id).exists():
+                            land.cases.add(case)
+                            linked_count += 1
+                            self.stdout.write(f'  ✓ Linked case {case.case_number[:30]}... to land {land_ref.strip()}')
+                    except Exception as e:
+                        self.stdout.write(f'  ❌ Error linking case to land {land_ref}: {e}')
+        
+        self.stdout.write(self.style.SUCCESS(f'Successfully linked {linked_count} case-land relationships'))
 
     def extract_land_references(self, text):
         """Extract land references from text"""
