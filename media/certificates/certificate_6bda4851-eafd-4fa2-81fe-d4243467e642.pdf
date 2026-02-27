@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OpenLaw Certificate</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .certificate-type {
+            font-size: 24px;
+            font-weight: bold;
+            color: #34495e;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .certificate-id {
+            text-align: center;
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin: 20px 0;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .land-details {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .case-item {
+            background-color: #fff9e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #f39c12;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            border-top: 2px solid #2c3e50;
+            padding-top: 20px;
+        }
+        .stamp {
+            border: 2px solid #2c3e50;
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+            text-align: center;
+            line-height: 100px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px auto;
+        }
+        .generated-date {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        
+        .status-flag {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        
+        .status-flag.ongoing {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .status-flag.resolved {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .status-flag.unknown {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .case-status {
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .ongoing-case .case-status {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .resolved-case .case-status {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .unknown-case .case-status {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .case-details {
+            margin-top: 10px;
+        }
+        
+        .party-info {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-left: 3px solid #007bff;
+        }
+        
+        .party-text {
+            font-style: italic;
+            color: #495057;
+        }
+        
+        .judgment-outcome {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #e8f5e8;
+            border-left: 3px solid #28a745;
+        }
+        
+        .outcome-text {
+            font-weight: 500;
+            color: #155724;
+        }
+        
+        .case-name {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .recommendation-high-risk {
+            border-left: 5px solid #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .recommendation-low-risk {
+            border-left: 5px solid #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .recommendation-caution {
+            border-left: 5px solid #ffc107;
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        .recommendation-clear {
+            border-left: 5px solid #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .recommendation-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .recommendation-title-high-risk {
+            color: #dc3545;
+        }
+        
+        .recommendation-title-low-risk {
+            color: #28a745;
+        }
+        
+        .recommendation-title-caution {
+            color: #ffc107;
+        }
+        
+        .recommendation-title-clear {
+            color: #28a745;
+        }
+        
+        .recommendation-message {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .recommendation-details ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .recommendation-details li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">OpenLaw Kenya</div>
+        <div>Land Due Diligence & Litigation Intelligence System</div>
+    </div>
+
+    <div class="certificate-type">
+        
+            CASE-LINKED CERTIFICATE
+        
+    </div>
+
+    <div class="certificate-id">
+        Certificate ID: 6bda4851-eafd-4fa2-81fe-d4243467e642
+    </div>
+
+    <div class="section">
+        <div class="section-title">Land Details</div>
+        <div class="land-details">
+            <strong>Title Number:</strong> 776/4/2<br>
+            
+            <strong>Plot Number:</strong> 776/4/2<br>
+            
+            
+            
+        </div>
+    </div>
+
+    
+    <div class="section">
+        <div class="section-title">Land Transaction Recommendation</div>
+        <div class="recommendation-section recommendation-low_risk" style="padding: 20px; margin: 15px 0;">
+            <div class="recommendation-title recommendation-title-low_risk">
+                ✅ GENERALLY SAFE - RESOLVED LITIGATION
+            </div>
+            <div class="recommendation-message">
+                This land has 1 resolved case(s) with final judgments.
+            </div>
+            <div class="recommendation-details">
+                <ul>
+                    
+                    <li>All litigation has been resolved with final judgments</li>
+                    
+                    <li>Review judgment details to ensure no ongoing obligations</li>
+                    
+                    <li>Land is generally safe for transaction</li>
+                    
+                    <li>Still recommend standard due diligence procedures</li>
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Litigation Status Summary</div>
+        
+        
+        
+        
+        <div class="status-flag resolved">
+            <strong>✅ RESOLVED CASES</strong><br>
+            1 case(s) with final judgment
+        </div>
+        
+        
+        
+    </div>
+
+    
+
+    
+    <div class="section">
+        <div class="section-title">Resolved Cases (Judgments)</div>
+        
+        <div class="case-item resolved-case">
+            <div class="case-status">🟢 RESOLVED - JUDGMENT</div>
+            <div class="case-details">
+                <strong>Case Number:</strong> KEELC/2019/13<br>
+                <strong>Court Station:</strong> KISUMU<br>
+                <strong>Year:</strong> 2019<br>
+                
+                
+                <div class="party-info">
+                    <strong>Plaintiff(s):</strong><br>
+                    <span class="party-text">Rural Housing Estate</span>
+                </div>
+                
+                
+                
+                <div class="party-info">
+                    <strong>Defendant(s):</strong><br>
+                    <span class="party-text">National Land Commission &amp; 2 others</span>
+                </div>
+                
+                
+                
+                <div class="judgment-outcome">
+                    <strong>Judgment Outcome:</strong><br>
+                    <span class="outcome-text">Final judgment entered in this matter - consult full judgment for details</span>
+                </div>
+                
+                
+                <div class="case-name">
+                    <strong>Case Title:</strong> Rural Housing Estate v National Land Commission &amp; 2 others [2019] KEELC 13 (KLR)
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+
+    
+    </div>
+    
+
+    <div class="footer">
+        <div class="stamp">OFFICIAL</div>
+        <div>This certificate is electronically generated by OpenLaw Kenya</div>
+        <div class="generated-date">Generated on: 25 February 2026</div>
+    </div>
+</body>
+</html>
