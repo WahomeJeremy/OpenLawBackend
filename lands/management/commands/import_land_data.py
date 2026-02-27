@@ -71,21 +71,31 @@ class Command(BaseCommand):
         if not text:
             return []
         
-        # Common patterns for land references
+        # Common patterns for land references - updated to match actual data
         patterns = [
-            r'L\.R\.?\s*No\.?\s*([A-Z0-9/]+)',
-            r'LR\s*([A-Z0-9/]+)',
-            r'([A-Z0-9]+/[A-Z0-9]+)',
-            r'Plot\s+([A-Z0-9/]+)',
-            r'Title\s+([A-Z0-9/]+)',
+            r'L\.?\s*R\.?\s*NO\.?\s*([A-Z0-9/\-\s]+)',  # L.R. NO. 776/4/2
+            r'L\.?\s*R\.?\s*([A-Z0-9/\-\s]+)',          # L. R. No. KIIRUA/272
+            r'LR\s*NO\.?\s*([A-Z0-9/\-\s]+)',          # LR NO. 776/4/2
+            r'LR\s*([A-Z0-9/\-\s]+)',                  # LR 776/4/2
+            r'([A-Z0-9]+/[A-Z0-9]+)',                  # 776/4/2
+            r'([A-Z]+\s+[A-Z0-9/\-]+)',               # KISUMU MUNICIPALITY/BLOCK 9/1
+            r'Block\s+([0-9]+/[0-9]+)',                # Block 9/1
+            r'MUNICIPALITY/BLOCK\s+([0-9]+/[0-9]+)',   # MUNICIPALITY/BLOCK 9/1
         ]
         
         land_refs = set()
         for pattern in patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             for match in matches:
-                if len(match.strip()) > 3:  # Filter out very short matches
-                    land_refs.add(match.strip())
+                # Clean up the match
+                cleaned = match.strip()
+                # Remove extra spaces and normalize
+                cleaned = re.sub(r'\s+', ' ', cleaned)
+                cleaned = cleaned.strip()
+                
+                # Filter out very short matches and common words
+                if len(cleaned) > 2 and not cleaned.lower() in ['no', 'block', 'municipality']:
+                    land_refs.add(cleaned)
         
         return list(land_refs)
 
