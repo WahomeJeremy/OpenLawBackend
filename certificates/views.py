@@ -5,7 +5,7 @@ from django.template.loader import render_to_string
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-# from weasyprint import HTML, CSS  # Commented out for initial setup
+# from weasyprint import HTML, CSS  # Commented out - requires system dependencies
 from .models import Certificate
 from lands.models import Land
 
@@ -138,7 +138,8 @@ class CertificateGenerateView(APIView):
         
         html_content = render_to_string('certificates/certificate_template.html', context)
         
-        # Temporary: return HTML as bytes (will be replaced with PDF generation)
+        # For now, return HTML content that browsers can render as PDF
+        # This will be replaced with proper PDF generation once WeasyPrint dependencies are resolved
         return html_content.encode('utf-8')
 
     def enrich_case_data(self, case):
@@ -204,21 +205,56 @@ class CertificateGenerateView(APIView):
 
 
 class CertificateDownloadView(generics.RetrieveAPIView):
-    """Download certificate PDF"""
+    """Download certificate (HTML format for now)"""
     queryset = Certificate.objects.all()
     serializer_class = CertificateSerializer
     
     def retrieve(self, request, *args, **kwargs):
         certificate = self.get_object()
         
-        if not certificate.pdf_file:
-            return Response({'error': 'PDF file not found'}, status=404)
+        # Generate certificate content on-demand
+        generator = CertificateGenerateView()
+        content = generator.generate_certificate_pdf(certificate)
         
-        file_path = certificate.pdf_file.path
-        if os.path.exists(file_path):
-            with open(file_path, 'rb') as f:
-                response = HttpResponse(f.read(), content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-                return response
-        else:
-            return Response({'error': 'File not found'}, status=404)
+        try:
+            # Create better filename based on land title and certificate type
+            land_title = certificate.land.title_number.replace('/', '_').replace(' ', '_')
+            timestamp = certificate.generated_at.strftime('%Y%m%d_%H%M%S')
+            filename = f"OpenLaw_Certificate_{land_title}_{timestamp}.html"
+            
+            # Return HTML content as downloadable file
+            response = HttpResponse(content, content_type='text/html')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            
+            return response
+                
+        except Exception as e:
+            return Response({'error': f'Error generating certificate: {str(e)}'}, status=500)
+
+
+class CertificatePreviewView(generics.RetrieveAPIView):
+    """Preview certificate in browser"""
+    queryset = Certificate.objects.all()
+    serializer_class = CertificateSerializer
+    
+    def retrieve(self, request, *args, **kwargs):
+        certificate = self.get_object()
+        
+        # Generate certificate content on-demand
+        generator = CertificateGenerateView()
+        content = generator.generate_certificate_pdf(certificate)
+        
+        try:
+            # Return HTML content for inline display
+            response = HttpResponse(content, content_type='text/html')
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            
+            return response
+                
+        except Exception as e:
+            return Response({'error': f'Error generating certificate: {str(e)}'}, status=500)

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OpenLaw Certificate</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .certificate-type {
+            font-size: 24px;
+            font-weight: bold;
+            color: #34495e;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .certificate-id {
+            text-align: center;
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin: 20px 0;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .land-details {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+        }
+        .case-item {
+            background-color: #fff9e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #f39c12;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            border-top: 2px solid #2c3e50;
+            padding-top: 20px;
+        }
+        .stamp {
+            border: 2px solid #2c3e50;
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+            text-align: center;
+            line-height: 100px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px auto;
+        }
+        .generated-date {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        
+        .status-flag {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        
+        .status-flag.ongoing {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .status-flag.resolved {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .status-flag.unknown {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .case-status {
+            font-weight: bold;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .ongoing-case .case-status {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .resolved-case .case-status {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .unknown-case .case-status {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .case-details {
+            margin-top: 10px;
+        }
+        
+        .party-info {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-left: 3px solid #007bff;
+        }
+        
+        .party-text {
+            font-style: italic;
+            color: #495057;
+        }
+        
+        .judgment-outcome {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #e8f5e8;
+            border-left: 3px solid #28a745;
+        }
+        
+        .outcome-text {
+            font-weight: 500;
+            color: #155724;
+        }
+        
+        .case-name {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .recommendation-high-risk {
+            border-left: 5px solid #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .recommendation-low-risk {
+            border-left: 5px solid #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .recommendation-caution {
+            border-left: 5px solid #ffc107;
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        .recommendation-clear {
+            border-left: 5px solid #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .recommendation-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .recommendation-title-high-risk {
+            color: #dc3545;
+        }
+        
+        .recommendation-title-low-risk {
+            color: #28a745;
+        }
+        
+        .recommendation-title-caution {
+            color: #ffc107;
+        }
+        
+        .recommendation-title-clear {
+            color: #28a745;
+        }
+        
+        .recommendation-message {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .recommendation-details ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .recommendation-details li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">OpenLaw Kenya</div>
+        <div>Land Due Diligence & Litigation Intelligence System</div>
+    </div>
+
+    <div class="certificate-type">
+        
+            CASE-LINKED CERTIFICATE
+        
+    </div>
+
+    <div class="certificate-id">
+        Certificate ID: 72be1307-6933-46b6-9b50-903c3fb33153
+    </div>
+
+    <div class="section">
+        <div class="section-title">Land Details</div>
+        <div class="land-details">
+            <strong>Title Number:</strong> 10821/53<br>
+            <strong>LR Number:</strong> 10821/53<br>
+            <strong>Plot Number:</strong> 10821/53<br>
+            
+            
+            
+        </div>
+    </div>
+
+
+    
+    <div class="section">
+        <div class="section-title">Cases with Ruling Status</div>
+        
+        <div class="case-item ongoing-case">
+            <div class="case-status">RULING</div>
+            <div class="case-details">
+                <strong>Case Number:</strong> KEELC/2019/950<br>
+                <strong>Court Station:</strong> Thika<br>
+                <strong>Year:</strong> 2019<br>
+                
+                
+                <div class="party-info">
+                    <strong>Plaintiff(s):</strong><br>
+                    <span class="party-text">Rashid Kogi Muturi(Suing on his behalf and on behalf of members of Thika Muslim Housing Co-operative Society Limited claiming interest over L.R No.10821/531)</span>
+                </div>
+                
+                
+                
+                <div class="party-info">
+                    <strong>Defendant(s):</strong><br>
+                    <span class="party-text">Screen Check Limited, Hassan A.A. Zubeidi, Joseph D.B.K Kimani t/aPyramid Auctioneer &amp; Thika Land Registrar (Environment &amp; Land Case 300 of 2018)</span>
+                </div>
+                
+                
+                <div class="case-name">
+                    <strong>Case Title:</strong> Rashid Kogi Muturi(Suing on his behalf and on behalf of members of Thika Muslim Housing Co-operative Society Limited claiming interest over L.R No.10821/531) v Screen Check Limited, Hassan A.A. Zubeidi, Joseph D.B.K Kimani t/aPyramid Auctioneer &amp; Thika Land Registrar (Environment &amp; Land Case 300 of 2018) [2019] KEELC 950 (KLR) (1 November 2019) (Ruling)
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+
+    
+
+    
+
+    
+
+    <div class="footer">
+        <div class="stamp">OFFICIAL</div>
+        <div>This certificate is electronically generated by OpenLaw Kenya</div>
+        <div class="generated-date">Generated on: 27 February 2026</div>
+    </div>
+</body>
+</html>
