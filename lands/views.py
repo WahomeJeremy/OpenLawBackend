@@ -2,7 +2,14 @@ from django.db.models import Q
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from .models import Land
+
+
+class LandPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class LandSerializer(serializers.ModelSerializer):
@@ -14,6 +21,13 @@ class LandSerializer(serializers.ModelSerializer):
     
     def get_cases_count(self, obj):
         return obj.cases.count()
+
+
+class LandListView(generics.ListAPIView):
+    """List all land parcels"""
+    queryset = Land.objects.all()
+    serializer_class = LandSerializer
+    pagination_class = LandPagination
 
 
 class BulkLandSearchSerializer(serializers.Serializer):
