@@ -44,9 +44,7 @@ class Command(BaseCommand):
                         defaults={
                             'lr_number': self.extract_lr_number(land_ref),
                             'plot_number': self.extract_plot_number(land_ref),
-                            'location': self.extract_location(row),
-                            'county': self.extract_county(row),
-                            'registration_date': f'{year}-01-01'  # Default registration date
+                            'county': self.extract_county(row)
                         }
                     )
                     
