@@ -19,16 +19,20 @@ class Command(BaseCommand):
             count = 0
             
             for row in reader:
+                # Handle empty year_filed values
+                year_filed = row.get('year_filed', '').strip()
+                year_filed = int(year_filed) if year_filed and year_filed.isdigit() else None
+                
                 Case.objects.update_or_create(
-                    case_title=row['case_title'],
+                    case_title=row.get('case_title', '').strip(),
                     defaults={
-                        'year_filed': int(row['year_filed']) if row['year_filed'] else None,
-                        'court_station': row['court_station'],
-                        'plaintiff': row['plaintiff'],
-                        'defendant': row['defendant'],
-                        'judgment_type': row['judgment_type'],
-                        'land_references': row['land_references'],
-                        'url': row['url']
+                        'year_filed': year_filed,
+                        'court_station': row.get('court_station', '').strip(),
+                        'plaintiff': row.get('plaintiff', '').strip(),
+                        'defendant': row.get('defendant', '').strip(),
+                        'judgment_type': row.get('judgment_type', '').strip(),
+                        'land_references': row.get('land_references', '').strip(),
+                        'url': row.get('url', '').strip()
                     }
                 )
                 count += 1
