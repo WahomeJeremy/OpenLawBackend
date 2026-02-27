@@ -23,16 +23,21 @@ class Command(BaseCommand):
                 year_filed = row.get('year_filed', '').strip()
                 year_filed = int(year_filed) if year_filed and year_filed.isdigit() else None
                 
+                # Generate case number from case title or use a default
+                case_title = row.get('case_title', '').strip()
+                case_number = case_title.split('[')[-1].split(']')[0] if '[' in case_title and ']' in case_title else f"ELC-{count+1}"
+                
                 Case.objects.update_or_create(
-                    case_title=row.get('case_title', '').strip(),
+                    case_number=case_number,
                     defaults={
-                        'year_filed': year_filed,
-                        'court_station': row.get('court_station', '').strip(),
+                        'case_name': case_title,
+                        'year': year_filed,
+                        'court': row.get('court_station', '').strip(),
                         'plaintiff': row.get('plaintiff', '').strip(),
                         'defendant': row.get('defendant', '').strip(),
-                        'judgment_type': row.get('judgment_type', '').strip(),
-                        'land_references': row.get('land_references', '').strip(),
-                        'url': row.get('url', '').strip()
+                        'status': row.get('judgment_type', '').strip(),
+                        'summary': row.get('land_references', '').strip(),
+                        'parties': f"{row.get('plaintiff', '').strip()} vs {row.get('defendant', '').strip()}"
                     }
                 )
                 count += 1
