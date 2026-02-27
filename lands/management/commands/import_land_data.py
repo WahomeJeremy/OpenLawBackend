@@ -62,17 +62,20 @@ class Command(BaseCommand):
                             # Extract case number from title for better matching
                             case_number = case_title.split('[')[0].strip() if '[' in case_title else case_title.strip()
                             
-                            # Try multiple matching strategies
+                            # Try multiple matching strategies - search by case number first, then by partial name
                             case = Case.objects.filter(
                                 Q(case_name__icontains=case_number) |
-                                Q(case_name__icontains=case_title.split('[')[0].strip())
+                                Q(case_name__icontains=case_title.split('[')[0].strip()) |
+                                Q(case_name__icontains=case_title[:50])  # Search first 50 chars
                             ).first()
                             
                             if case:
                                 land.cases.add(case)
-                                self.stdout.write(f'  Linked land {cleaned_ref} to case {case.case_name}')
+                                self.stdout.write(f'  ✓ Linked land {cleaned_ref} to case {case.case_name} (ID: {case.id})')
+                            else:
+                                self.stdout.write(f'  ⚠ Case not found for land {cleaned_ref} (searched for: {case_number})')
                         except Exception as e:
-                            self.stdout.write(f'  Error linking case: {e}')
+                            self.stdout.write(f'  ❌ Error linking case: {e}')
                     
                     if created:
                         count += 1
