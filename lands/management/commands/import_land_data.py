@@ -38,13 +38,19 @@ class Command(BaseCommand):
                 land_refs = self.extract_land_references(land_references)
                 
                 for land_ref in land_refs:
+                    # Clean and truncate land reference to fit in database
+                    cleaned_ref = land_ref.strip()[:250]  # Truncate to 250 chars to be safe
+                    
+                    if not cleaned_ref:
+                        continue
+                    
                     # Create or update land record
                     land, created = Land.objects.update_or_create(
-                        title_number=land_ref,
+                        title_number=cleaned_ref,
                         defaults={
-                            'lr_number': self.extract_lr_number(land_ref),
-                            'plot_number': self.extract_plot_number(land_ref),
-                            'county': self.extract_county(row)
+                            'lr_number': self.extract_lr_number(cleaned_ref)[:250],
+                            'plot_number': self.extract_plot_number(cleaned_ref)[:250],
+                            'county': self.extract_county(row)[:100]
                         }
                     )
                     
