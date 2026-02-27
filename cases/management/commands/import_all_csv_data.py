@@ -94,7 +94,7 @@ class Command(BaseCommand):
             case_title = row.get('case_title', '').strip()
             url = row.get('url', '').strip()
             
-            # Generate case number from case_id or case_title
+            # Use case_id directly as case_number to preserve original format
             case_number = case_id if case_id else self._extract_case_number_from_title(case_title)
             
         else:
@@ -108,7 +108,7 @@ class Command(BaseCommand):
             land_references = row.get('land_references', '').strip()
             url = row.get('url', '').strip()
             
-            # Generate case number from case_title
+            # Extract case number from case_title for 2019 data
             case_number = self._extract_case_number_from_title(case_title)
             court = court_station
         
