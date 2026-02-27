@@ -57,23 +57,26 @@ class Command(BaseCommand):
                     
                     # Link to case if case exists
                     case_title = row.get('case_title', '').strip()
-                    if case_title:
+                    land_ref = cleaned_ref.strip()
+                    
+                    if case_title and land_ref:
                         try:
                             # Extract case number from title for better matching
                             case_number = case_title.split('[')[0].strip() if '[' in case_title else case_title.strip()
                             
-                            # Try multiple matching strategies - search by case number first, then by partial name
+                            # Search for cases that contain this land reference in their summary field
+                            # where land_references are stored during case import
                             case = Case.objects.filter(
-                                Q(case_name__icontains=case_number) |
-                                Q(case_name__icontains=case_title.split('[')[0].strip()) |
-                                Q(case_name__icontains=case_title[:50])  # Search first 50 chars
+                                Q(summary__icontains=land_ref) |  # Search in summary (where land_refs are stored)
+                                Q(case_name__icontains=case_number) |  # Also try case name matching
+                                Q(case_name__icontains=case_title.split('[')[0].strip())
                             ).first()
                             
                             if case:
                                 land.cases.add(case)
-                                self.stdout.write(f'  ✓ Linked land {cleaned_ref} to case {case.case_name} (ID: {case.id})')
+                                self.stdout.write(f'  ✓ Linked land {land_ref} to case {case.case_name[:50]}... (ID: {case.id})')
                             else:
-                                self.stdout.write(f'  ⚠ Case not found for land {cleaned_ref} (searched for: {case_number})')
+                                self.stdout.write(f'  ⚠ Case not found for land {land_ref} (searched in summary and case_name)')
                         except Exception as e:
                             self.stdout.write(f'  ❌ Error linking case: {e}')
                     
