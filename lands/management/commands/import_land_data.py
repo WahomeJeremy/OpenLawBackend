@@ -3,6 +3,7 @@ import os
 import re
 from django.core.management.base import BaseCommand
 from django.conf import settings
+from django.db.models import Q
 from lands.models import Land
 from cases.models import Case
 
@@ -58,11 +59,20 @@ class Command(BaseCommand):
                     case_title = row.get('case_title', '').strip()
                     if case_title:
                         try:
-                            case = Case.objects.filter(case_name__icontains=case_title.split('[')[0].strip()).first()
+                            # Extract case number from title for better matching
+                            case_number = case_title.split('[')[0].strip() if '[' in case_title else case_title.strip()
+                            
+                            # Try multiple matching strategies
+                            case = Case.objects.filter(
+                                Q(case_name__icontains=case_number) |
+                                Q(case_name__icontains=case_title.split('[')[0].strip())
+                            ).first()
+                            
                             if case:
                                 land.cases.add(case)
-                        except:
-                            pass
+                                self.stdout.write(f'  Linked land {cleaned_ref} to case {case.case_name}')
+                        except Exception as e:
+                            self.stdout.write(f'  Error linking case: {e}')
                     
                     if created:
                         count += 1
