@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 for row in reader:
                     try:
                         # Extract case data based on CSV format
-                        case_data = self._extract_case_data(row, year_label)
+                        case_data, land_references = self._extract_case_data(row, year_label)
                         
                         # Create or update the case
                         case, created = Case.objects.update_or_create(
@@ -66,8 +66,8 @@ class Command(BaseCommand):
                         )
                         
                         # Process land references if they exist
-                        if case_data.get('land_references'):
-                            self._process_land_references(case, case_data['land_references'])
+                        if land_references:
+                            self._process_land_references(case, land_references)
                         
                         count += 1
                         
@@ -120,7 +120,7 @@ class Command(BaseCommand):
         # Create parties string
         parties = f"{plaintiff} vs {defendant}" if plaintiff and defendant else case_title
         
-        return {
+        case_data = {
             'case_number': case_number,
             'case_name': case_title,
             'year': year,
@@ -129,9 +129,10 @@ class Command(BaseCommand):
             'defendant': defendant if defendant else None,
             'status': judgment_type if year_label == '2019' else 'Judgment',
             'summary': land_references if land_references else None,
-            'parties': parties,
-            'land_references': land_references  # Keep for processing
+            'parties': parties
         }
+        
+        return case_data, land_references
 
     def _extract_case_number_from_title(self, case_title):
         """Extract case number from case title"""
