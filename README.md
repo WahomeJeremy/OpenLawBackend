@@ -29,11 +29,21 @@ openlaw_backend/
 ├── cases/                  # Court case records
 ├── certificates/           # Certificate generation system
 ├── blogs/                  # Blog management system
+├── scripts/                # Utility scripts and management tools
+│   ├── import_data.py      # Data import utilities
+│   └── test_email.py       # Email configuration testing
+├── docs/                   # Documentation
+│   └── API_DOCUMENTATION.md # Complete API reference
+├── data/                   # Data files
+│   ├── Kenya_ELC_2013_clean.csv
+│   └── Kenya_ELC_2019.csv
 ├── templates/              # HTML templates for certificates
+│   └── certificate_test.html
 ├── media/                  # Uploaded files (certificates)
 ├── staticfiles/            # Static files
 ├── manage.py
 ├── requirements.txt
+├── .env                    # Environment variables (gitignored)
 └── README.md
 ```
 
@@ -117,7 +127,14 @@ openlaw_backend/
 Use the management command to import case data:
 
 ```bash
-python manage.py import_cases --file path/to/your/cases.csv
+python manage.py import_cases --file data/Kenya_ELC_2019.csv
+```
+
+### Test Email Configuration
+Test the email setup before using the contact forms:
+
+```bash
+python scripts/test_email.py
 ```
 
 #### Expected CSV Format

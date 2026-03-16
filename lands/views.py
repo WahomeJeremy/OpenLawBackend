@@ -3,7 +3,8 @@ from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
-from .models import Land
+from .models import Land, SearchableReference
+import re
 
 
 class LandPagination(PageNumberPagination):
@@ -44,6 +45,54 @@ class BulkLandSearchResultSerializer(serializers.Serializer):
     found = serializers.BooleanField()
     land_data = LandSerializer(required=False, allow_null=True)
     message = serializers.CharField(required=False, allow_blank=True)
+
+
+def preprocess_search_query(raw_query):
+    """
+    Preprocess user search query by removing prefixes and normalizing.
+    """
+    if not raw_query:
+        return ""
+    
+    # Only remove standalone prefixes, not "NO" when followed by other content
+    query = re.sub(r'^(LR|L\.?R\.?|LAND\s+REFERENCE|PLOT|PARCEL|BLOCK|MUNICIPALITY\s*BLOCK)(?=\s|$)', '', raw_query, flags=re.IGNORECASE)
+    
+    # Remove dots and commas, but keep slashes
+    query = re.sub(r'[.,\s]+', ' ', query)
+    
+    # Convert to uppercase and strip
+    query = query.upper().strip()
+    
+    # Replace multiple spaces with single space
+    query = re.sub(r'\s+', ' ', query)
+    
+    return query
+
+
+def find_exact_matches(normalized_query):
+    """
+    Find exact matches using SearchableReference model.
+    """
+    # Exact match - no regex, just exact string matching
+    matches = SearchableReference.objects.filter(
+        reference_text__iexact=normalized_query
+    ).select_related('land')
+    
+    return matches
+
+
+def find_suggestions(normalized_query, limit=5):
+    """
+    Find close matches for suggestions.
+    """
+    # Find references that start with the query but are longer
+    suggestions = SearchableReference.objects.filter(
+        reference_text__istartswith=normalized_query
+    ).exclude(
+        reference_text__iexact=normalized_query
+    ).select_related('land')[:limit]
+    
+    return suggestions
 
 
 class LandSearchView(APIView):
@@ -207,11 +256,11 @@ class BulkLandSearchView(APIView):
         queries = serializer.validated_data['queries']
         results = []
         
-        for query in queries:
-            query = query.strip()
-            if not query:
+        for raw_query in queries:
+            raw_query = raw_query.strip()
+            if not raw_query:
                 results.append({
-                    'query': query,
+                    'query': raw_query,
                     'results': [],
                     'count': 0,
                     'message': 'Empty query provided'
@@ -219,9 +268,9 @@ class BulkLandSearchView(APIView):
                 continue
             
             # Validate that the query is a complete land identifier
-            if not self.is_valid_land_identifier(query):
+            if not self.is_valid_land_identifier(raw_query):
                 results.append({
-                    'query': query,
+                    'query': raw_query,
                     'results': [],
                     'count': 0,
                     'message': 'No land records found. Please confirm the LR number or title deed number and try again.'
@@ -229,16 +278,16 @@ class BulkLandSearchView(APIView):
                 continue
             
             lands = Land.objects.filter(
-                Q(title_number__icontains=query) |
-                Q(lr_number__icontains=query) |
-                Q(plot_number__icontains=query) |
-                Q(certificate_number__icontains=query) |
-                Q(allotment_number__icontains=query)
+                Q(title_number__icontains=raw_query) |
+                Q(lr_number__icontains=raw_query) |
+                Q(plot_number__icontains=raw_query) |
+                Q(certificate_number__icontains=raw_query) |
+                Q(allotment_number__icontains=raw_query)
             ).distinct()
             
             if not lands.exists():
                 results.append({
-                    'query': query,
+                    'query': raw_query,
                     'results': [],
                     'count': 0,
                     'message': 'No land records found. Please confirm the LR number or title deed number and try again.'
@@ -246,7 +295,7 @@ class BulkLandSearchView(APIView):
             else:
                 land_serializer = LandSerializer(lands, many=True)
                 results.append({
-                    'query': query,
+                    'query': raw_query,
                     'results': land_serializer.data,
                     'count': lands.count()
                 })

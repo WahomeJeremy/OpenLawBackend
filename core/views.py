@@ -46,6 +46,8 @@ class LegalEmailApplicationListCreate(generics.ListCreateAPIView):
             )
         except Exception as e:
             print(f"Failed to send email: {e}")
+            # In production, you might want to log this error properly
+            # and possibly notify administrators through other means
 
 
 @api_view(['GET'])
