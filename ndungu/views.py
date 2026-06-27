@@ -54,9 +54,10 @@ class SearchView(APIView):
         if result["match_type"] == "exact":
             parcel = result["parcel"]
             count = parcel.findings.count()
-            ref = log_search(q, normalized, count, "encumbrance_found", parcel)
             cert = build_certificate(parcel, q)
-            cert["metadata"] = _metadata(request, q, ref)
+            shown = cert["overview"]["parcel"]  # friendly id (never a synthetic key)
+            ref = log_search(shown, normalized, count, "encumbrance_found", parcel)
+            cert["metadata"] = _metadata(request, shown, ref)
             return Response(cert)
 
         if result["match_type"] in ("suggestions", "multiple"):
@@ -97,13 +98,15 @@ class CertificatePDFView(APIView):
 
         if parcel is not None:
             count = parcel.findings.count()
-            ref = log_search(q, normalized, count, "encumbrance_found", parcel)
             cert = build_certificate(parcel, q)
+            shown = cert["overview"]["parcel"]  # friendly id (never a synthetic key)
+            ref = log_search(shown, normalized, count, "encumbrance_found", parcel)
         else:
-            ref = log_search(q, normalized, 0, "no_encumbrance")
             cert = build_nil_certificate(q)
+            shown = q
+            ref = log_search(q, normalized, 0, "no_encumbrance")
 
-        meta = _metadata(request, q, ref)
+        meta = _metadata(request, shown, ref)
         cert["metadata"] = meta
 
         try:
