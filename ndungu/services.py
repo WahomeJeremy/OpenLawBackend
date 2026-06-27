@@ -107,6 +107,28 @@ def run_search(raw_query):
     return {"match_type": "none"}
 
 
+def _clean_label(s):
+    """Strip whitespace and stray leading/trailing commas from a display value."""
+    return (s or "").strip().strip(",").strip()
+
+
+def friendly_label(parcel, findings=None):
+    """A human-readable label for a parcel — never the internal synthetic key
+    (e.g. 'narrative::forest_018'). Falls back through display -> holder ->
+    location -> category so users always see something meaningful."""
+    label = _clean_label(parcel.parcel_display)
+    if label:
+        return label
+    if "::" in parcel.parcel_id_clean:  # narrative / entity synthetic key
+        fs = findings if findings is not None else list(parcel.findings.all())
+        f = fs[0] if fs else None
+        if f:
+            return (_clean_label(f.current_holder) or _clean_label(f.location)
+                    or f.flag_category.replace("_", " ").title())
+        return "Unidentified record"
+    return parcel.parcel_id_clean
+
+
 def suggestion_payload(parcel):
     findings = list(parcel.findings.all())
     # A short context line so name-based (entity) suggestions are meaningful.
@@ -116,9 +138,9 @@ def suggestion_payload(parcel):
         context = first.current_holder or first.location or first.flag_category
     return {
         "parcel_id": parcel.parcel_id_clean,
-        "display": parcel.parcel_display or parcel.parcel_id_clean,
+        "display": friendly_label(parcel, findings),
         "type": parcel.parcel_id_type.replace("_", " "),
-        "context": context,
+        "context": _clean_label(context),
         "records": len(findings),
         "volumes": _roman_volumes(
             sorted({f.source_volume for f in findings if f.source_volume})
@@ -163,9 +185,9 @@ def build_certificate(parcel, searched_id):
     volumes = sorted({f.source_volume for f in findings if f.source_volume})
     roman = _roman_volumes(volumes)
 
-    # Synthetic keys (narrative::… / school::…) are not human ids — show the
-    # parcel's display name instead of the raw key.
-    shown_id = (parcel.parcel_display or searched_id
+    # Synthetic keys (narrative::… / school::…) are not human ids — show a
+    # friendly label instead of the raw key.
+    shown_id = (friendly_label(parcel, findings)
                 if "::" in parcel.parcel_id_clean else searched_id)
 
     reserved = next((f.reserved_use for f in findings if f.reserved_use), "")
