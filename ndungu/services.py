@@ -324,10 +324,7 @@ def render_certificate_pdf(cert, meta):
     from django.template.loader import render_to_string
     from weasyprint import CSS, HTML  # lazy import: native libs only needed here
 
-    qr = qr_data_uri(meta.get("verify_url") or verify_url(meta["certificate_reference"]))
-    html = render_to_string(
-        "ndungu/certificate.html", {"cert": cert, "meta": meta, "qr": qr}
-    )
+    html = render_to_string("ndungu/certificate.html", {"cert": cert, "meta": meta})
 
     measure = CSS(string="@page { size: 210mm 6000mm; }")
     page = HTML(string=html).render(stylesheets=[measure]).pages[0]

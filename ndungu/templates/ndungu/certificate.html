@@ -30,7 +30,7 @@
   .banner { padding: 11px 14px; border-radius: 6px; margin: 4px 0 16px; font-size: 12.5pt;
     font-weight: 700; }
   .banner.found { background: #fdecea; color: #9b1c1c; border-left: 4px solid #d9534f; }
-  .banner.nil   { background: #FFFEF5; color: #800020; border-left: 4px solid #D4AF37; }
+  .banner.nil   { background: #f0fdf4; color: #15803d; border-left: 4px solid #22c55e; }
   .banner .sub { display: block; font-size: 9pt; font-weight: 400; color: #555; margin-top: 3px;
     font-family: "Helvetica Neue", Arial, sans-serif; }
 
@@ -54,8 +54,8 @@
   .quote { background: #FFFEF5; border-left: 3px solid #D4AF37; padding: 6px 10px;
     margin: 6px 0; font-size: 9pt; }
   .quote .cite { font-size: 7.5pt; color: #aaa; display: block; margin-top: 3px; }
-  .legal { font-size: 11pt; font-weight: 600; padding: 12px 14px; background: #FFFEF5;
-    border-left: 4px solid #D4AF37; border-radius: 6px; color: #2b2b2b; }
+  .legal { font-size: 11pt; font-weight: 600; padding: 12px 14px; background: #f0fdf4;
+    border-left: 4px solid #22c55e; border-radius: 6px; color: #14532d; }
   .scope { font-size: 9pt; color: #555; margin-top: 8px; }
   .disclaimer { margin-top: 12px; padding-top: 8px; border-top: 1px solid #ddd;
     font-size: 7.8pt; color: #888; line-height: 1.4;
@@ -66,23 +66,14 @@
   <div class="watermark">OPEN LAW</div>
 
   <div class="header">
-    <table style="width:100%; border-collapse:collapse;"><tr>
-      <td style="vertical-align:top;">
-        <div class="title">Encumbrance Certificate</div>
-        <div class="subtitle">Ndung'u Report · 2004 Commission of Inquiry</div>
-        <table class="meta-grid">
-          <colgroup><col style="width:135px"><col></colgroup>
-          <tr><td class="k">Searched Parcel ID</td><td><strong>{{ meta.searched_parcel_id }}</strong></td></tr>
-          <tr><td class="k">Certificate Ref.</td><td><strong>{{ meta.certificate_reference }}</strong></td></tr>
-          <tr><td class="k">Generated</td><td>{{ meta.generated_display }}</td></tr>
-        </table>
-      </td>
-      <td style="vertical-align:top; text-align:right; width:88px;">
-        {% if qr %}<img src="{{ qr }}" style="width:80px; height:80px;">
-        <div style="width:80px; margin-top:2px; font-size:6.8pt; color:#999; text-align:center;
-          font-family: 'Helvetica Neue', Arial, sans-serif;">Scan to verify</div>{% endif %}
-      </td>
-    </tr></table>
+    <div class="title">Encumbrance Certificate</div>
+    <div class="subtitle">Ndung'u Report · 2004 Commission of Inquiry</div>
+    <table class="meta-grid">
+      <colgroup><col style="width:135px"><col></colgroup>
+      <tr><td class="k">Searched Parcel ID</td><td><strong>{{ meta.searched_parcel_id }}</strong></td></tr>
+      <tr><td class="k">Certificate Ref.</td><td><strong>{{ meta.certificate_reference }}</strong></td></tr>
+      <tr><td class="k">Generated</td><td>{{ meta.generated_display }}</td></tr>
+    </table>
   </div>
 
   {% if cert.status == "encumbrance_found" %}
@@ -128,6 +119,11 @@
     <p class="legal">{{ cert.legal_statement }}</p>
     <p class="scope">{{ cert.search_scope }}</p>
   {% endif %}
+
+  <p style="margin-top: 14px; font-size: 8.5pt; color: #555;
+    font-family: 'Helvetica Neue', Arial, sans-serif;">
+    Verify the authenticity of this certificate at <strong>legal.ke/verify</strong>
+    using the Certificate Reference above.</p>
 
   <div class="disclaimer">{{ cert.disclaimer }}</div>
 </body>
