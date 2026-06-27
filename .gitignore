@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 db.sqlite3
 .env
+.env.*
+!.env.example
+
+# Build / runtime artifacts
+staticfiles/
+media/
