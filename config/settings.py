@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "cases",
     "certificates",
     "blogs",
+    "ndungu",
 ]
 
 MIDDLEWARE = [
@@ -141,6 +142,10 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
     "https://www.legal.ke",
     "https://legal.ke",
     "http://localhost:5173",  # Vite default port
@@ -150,6 +155,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# Public-facing verify page the certificate QR code points to.
+NDUNGU_VERIFY_URL = config("NDUNGU_VERIFY_URL", default="https://legal.ke/verify")
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

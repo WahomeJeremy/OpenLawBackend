@@ -1,0 +1,134 @@
+{% load ndungu_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Encumbrance Certificate — {{ meta.searched_parcel_id }}</title>
+<style>
+  @page { margin: 14mm 15mm 12mm 15mm;
+    @bottom-center { content: "Open Law — Ndung'u Report Encumbrance Certificate  •  Ref " "{{ meta.certificate_reference }}"  "  •  Page " counter(page) " of " counter(pages);
+      font-size: 7.5pt; color: #999; } }
+  * { box-sizing: border-box; }
+  body { font-family: Georgia, "Times New Roman", serif; color: #2b2b2b;
+    font-size: 10pt; line-height: 1.45; margin: 0; }
+  .sans { font-family: "Helvetica Neue", Arial, sans-serif; }
+
+  /* Faint brand watermark, repeated on every page */
+  .watermark { position: fixed; top: 38%; left: 0; right: 0; text-align: center;
+    font-size: 96pt; font-weight: 700; letter-spacing: 6px; color: #800020;
+    opacity: 0.05; transform: rotate(-28deg); }
+
+  .header { border-bottom: 3px solid #800020; padding-bottom: 8px; margin-bottom: 14px; }
+  .title { font-size: 19pt; font-weight: 700; color: #800020; letter-spacing: .3px; }
+  .subtitle { font-size: 8.5pt; color: #6b6b6b; text-transform: uppercase;
+    letter-spacing: 1.5px; font-family: "Helvetica Neue", Arial, sans-serif; }
+  .meta-grid { width: 100%; font-size: 8.5pt; color: #444; margin-top: 8px;
+    table-layout: fixed; border-collapse: collapse;
+    font-family: "Helvetica Neue", Arial, sans-serif; }
+  .meta-grid td { padding: 2px 0; vertical-align: baseline; }
+  .meta-grid .k { color: #999; }
+
+  .banner { padding: 11px 14px; border-radius: 6px; margin: 4px 0 16px; font-size: 12.5pt;
+    font-weight: 700; }
+  .banner.found { background: #fdecea; color: #9b1c1c; border-left: 4px solid #d9534f; }
+  .banner.nil   { background: #FFFEF5; color: #800020; border-left: 4px solid #D4AF37; }
+  .banner .sub { display: block; font-size: 9pt; font-weight: 400; color: #555; margin-top: 3px;
+    font-family: "Helvetica Neue", Arial, sans-serif; }
+
+  h2.tier { font-size: 10.5pt; color: #800020; text-transform: uppercase; letter-spacing: .8px;
+    border-bottom: 1px solid #D4AF37; padding-bottom: 4px; margin: 11px 0 6px;
+    font-family: "Helvetica Neue", Arial, sans-serif; }
+  table.kv { width: 100%; border-collapse: collapse; }
+  table.kv td { padding: 4px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+  table.kv td.k { width: 175px; color: #777; font-weight: 600;
+    font-family: "Helvetica Neue", Arial, sans-serif; }
+
+  .event { border-left: 3px solid #D4AF37; padding: 4px 0 4px 12px; margin-bottom: 7px; }
+  .event .cat { font-weight: 700; color: #800020; font-size: 9.5pt;
+    font-family: "Helvetica Neue", Arial, sans-serif; }
+  .event .cite { font-size: 8pt; color: #999; font-style: italic; margin-top: 2px; }
+  .event .row { margin-top: 3px; }
+  .event .lbl { color: #999; font-size: 8.5pt; }
+  .sale { background: #FFFEF5; border: 1px solid #D4AF3766; border-radius: 4px;
+    padding: 6px 8px; margin-top: 5px; font-size: 9pt; }
+
+  .quote { background: #FFFEF5; border-left: 3px solid #D4AF37; padding: 6px 10px;
+    margin: 6px 0; font-size: 9pt; }
+  .quote .cite { font-size: 7.5pt; color: #aaa; display: block; margin-top: 3px; }
+  .legal { font-size: 11pt; font-weight: 600; padding: 12px 14px; background: #FFFEF5;
+    border-left: 4px solid #D4AF37; border-radius: 6px; color: #2b2b2b; }
+  .scope { font-size: 9pt; color: #555; margin-top: 8px; }
+  .disclaimer { margin-top: 12px; padding-top: 8px; border-top: 1px solid #ddd;
+    font-size: 7.8pt; color: #888; line-height: 1.4;
+    font-family: "Helvetica Neue", Arial, sans-serif; }
+</style>
+</head>
+<body>
+  <div class="watermark">OPEN LAW</div>
+
+  <div class="header">
+    <table style="width:100%; border-collapse:collapse;"><tr>
+      <td style="vertical-align:top;">
+        <div class="title">Encumbrance Certificate</div>
+        <div class="subtitle">Ndung'u Report · 2004 Commission of Inquiry</div>
+        <table class="meta-grid">
+          <colgroup><col style="width:135px"><col></colgroup>
+          <tr><td class="k">Searched Parcel ID</td><td><strong>{{ meta.searched_parcel_id }}</strong></td></tr>
+          <tr><td class="k">Certificate Ref.</td><td><strong>{{ meta.certificate_reference }}</strong></td></tr>
+          <tr><td class="k">Generated</td><td>{{ meta.generated_display }}</td></tr>
+        </table>
+      </td>
+      <td style="vertical-align:top; text-align:right; width:88px;">
+        {% if qr %}<img src="{{ qr }}" style="width:80px; height:80px;">
+        <div style="width:80px; margin-top:2px; font-size:6.8pt; color:#999; text-align:center;
+          font-family: 'Helvetica Neue', Arial, sans-serif;">Scan to verify</div>{% endif %}
+      </td>
+    </tr></table>
+  </div>
+
+  {% if cert.status == "encumbrance_found" %}
+    <div class="banner found">{{ cert.overview.banner }}
+      <span class="sub">{{ cert.overview.summary }}</span></div>
+
+    <h2 class="tier">Parcel Summary</h2>
+    <table class="kv">
+      <tr><td class="k">Location</td><td>{{ cert.tier_a_summary.location|default:"—" }}</td></tr>
+      <tr><td class="k">Reserved Purpose</td><td>{{ cert.tier_a_summary.reserved_purpose|default:"—" }}</td></tr>
+      <tr><td class="k">Area (Ha)</td><td>{{ cert.tier_a_summary.area_hectares|default:"—" }}</td></tr>
+      <tr><td class="k">Current Owner</td><td>{{ cert.tier_a_summary.current_owner|default:"—" }}</td></tr>
+      <tr><td class="k">Commission Recommendation</td><td><strong>{{ cert.tier_a_summary.commission_recommendation|default:"—" }}</strong></td></tr>
+    </table>
+
+    <h2 class="tier">Encumbrance Timeline</h2>
+    {% for e in cert.tier_b_timeline %}
+      <div class="event">
+        <div class="cat">{{ e.flag_category|underscore_to_title }}</div>
+        <div class="cite">{{ e.citation }}</div>
+        {% if e.reserved_use %}<div class="row"><span class="lbl">Reserved use:</span> {{ e.reserved_use }}</div>{% endif %}
+        {% if e.prior_party %}<div class="row"><span class="lbl">Prior party:</span> {{ e.prior_party }}</div>{% endif %}
+        {% if e.current_holder %}<div class="row"><span class="lbl">Holder:</span> {{ e.current_holder }}</div>{% endif %}
+        {% if e.flag_reason %}<div class="row">{{ e.flag_reason }}</div>{% endif %}
+        {% if e.onward_sale %}
+          <div class="sale"><strong>Onward sale</strong> —
+            Vendor: {{ e.onward_sale.vendor|default:"—" }} ·
+            Buyer: {{ e.onward_sale.buyer|default:"—" }} ·
+            Price: Ksh {{ e.onward_sale.price_kshs|default:"—" }} ·
+            Date: {{ e.onward_sale.date|default:"—" }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <h2 class="tier">Commission Recommendation</h2>
+    <p><strong>Action: {{ cert.tier_c_recommendation.action|default:"—" }}</strong></p>
+    {% for q in cert.tier_c_recommendation.raw_quotes %}
+      <div class="quote">“{{ q.quote }}”<span class="cite">{{ q.citation }}</span></div>
+    {% endfor %}
+
+  {% else %}
+    <div class="banner nil">{{ cert.overview.banner }}</div>
+    <p class="legal">{{ cert.legal_statement }}</p>
+    <p class="scope">{{ cert.search_scope }}</p>
+  {% endif %}
+
+  <div class="disclaimer">{{ cert.disclaimer }}</div>
+</body>
+</html>
