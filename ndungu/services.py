@@ -19,13 +19,13 @@ def scope_statement():
     count = Finding.objects.count()
     return (
         f"Searched {count:,} records across the Ndung'u Report "
-        "(2004 Commission of Inquiry) — flagged parcels, schools, "
+        "(2004 Commission of Inquiry), covering flagged parcels, schools, "
         "corporations and other entities."
     )
 DISCLAIMER = (
     "Based on the 2004 Ndung'u Report (Commission of Inquiry into the "
-    "Illegal/Irregular Allocation of Public Land). For historical due-diligence "
-    "only — not a legal title or a substitute for an official Ministry of Lands "
+    "Illegal/Irregular Allocation of Public Land). For historical due diligence "
+    "only. Not a legal title or a substitute for an official Ministry of Lands "
     "Registry search."
 )
 _ROMAN = {"1": "I", "2": "II", "3": "III"}
