@@ -12,8 +12,9 @@ class BlogPostSerializer(serializers.ModelSerializer):
 
 class BlogListView(generics.ListAPIView):
     """List all published blog posts"""
-    queryset = BlogPost.objects.filter(is_published=True).order_by('-created_at')
+    queryset = BlogPost.objects.filter(is_published=True).order_by('category', 'order', 'title')
     serializer_class = BlogPostSerializer
+    pagination_class = None  # return all published articles for client-side grouping
 
 
 class BlogDetailView(generics.RetrieveAPIView):
