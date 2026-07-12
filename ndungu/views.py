@@ -85,6 +85,7 @@ class CertificatePDFView(APIView):
     def post(self, request):
         data = request.data or {}
         q = (data.get("parcel_id") or data.get("q") or "").strip()
+        searched_term = (data.get("searched_term") or "").strip()
         if len(q) < 2:
             return Response(
                 {"detail": "Provide 'parcel_id' (or 'q') of at least 2 characters."},
@@ -106,7 +107,12 @@ class CertificatePDFView(APIView):
             shown = q
             ref = log_search(q, normalized, 0, "no_encumbrance")
 
-        meta = _metadata(request, shown, ref)
+        # "Searched" is what the user typed; "Matched" is the record we resolved
+        # to. Only carry Matched when it isn't a 1-to-1 match (e.g. name search).
+        searched_display = searched_term or shown
+        meta = _metadata(request, searched_display, ref)
+        if shown and shown != searched_display:
+            meta["matched_parcel_id"] = shown
         cert["metadata"] = meta
 
         try:

@@ -71,6 +71,7 @@
     <table class="meta-grid">
       <colgroup><col style="width:135px"><col></colgroup>
       <tr><td class="k">Searched Parcel ID</td><td><strong>{{ meta.searched_parcel_id }}</strong></td></tr>
+      {% if meta.matched_parcel_id %}<tr><td class="k">Matched Parcel ID</td><td><strong>{{ meta.matched_parcel_id }}</strong></td></tr>{% endif %}
       <tr><td class="k">Certificate Ref.</td><td><strong>{{ meta.certificate_reference }}</strong></td></tr>
       <tr><td class="k">Generated</td><td>{{ meta.generated_display }}</td></tr>
     </table>
