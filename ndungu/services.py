@@ -3,6 +3,7 @@
 Pure functions that build the structured certificate payloads. Endpoints in
 views.py call these and persist the audit ledger entry.
 """
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -69,6 +70,35 @@ def _aggregate_recommendation(findings):
 # --------------------------------------------------------------------------- #
 #  Search
 # --------------------------------------------------------------------------- #
+# A single Ndung'u finding is indexed under ONE canonical key, but the source
+# routinely lists several registrable references for the same plot, e.g.
+# "L.R. 19095 Original 12661 Cf 157469". Only the primary LR (19095) becomes a
+# Parcel key; the cross-reference (Cf) and "Original" numbers live only in
+# Finding.parcel_id_raw. A search on any of those must still resolve to the plot,
+# so we scan parcel_id_raw for the query's identifier tokens.
+#
+# A token is a slash-style ref (209/11642, 12661/82) or a standalone 4-6 digit
+# number. Short/bare numbers are intentionally excluded — they are handled by the
+# normalized_lr path and would produce noisy substring hits here.
+_ID_TOKEN = re.compile(r"\b\d{1,5}/\d{2,6}[A-Za-z]?(?:/\d+[A-Za-z]?)*\b|\b\d{4,6}\b")
+
+
+def _identifier_tokens(raw):
+    return {m.group(0) for m in _ID_TOKEN.finditer(raw or "")}
+
+
+def _parcels_by_alternate_id(raw):
+    """Distinct parcels reachable via an alternate identifier (Cf / Original /
+    secondary LR) embedded in a finding's parcel_id_raw. Every identifier token in
+    the query must appear (word-bounded) in the SAME finding, so a multi-part query
+    like "LR 19095 original 12661" resolves precisely rather than fanning out."""
+    tokens = _identifier_tokens(raw)
+    if not tokens:
+        return []
+    findings = Finding.objects.all()
+    for tok in tokens:
+        findings = findings.filter(parcel_id_raw__iregex=r"\b" + re.escape(tok) + r"\b")
+    return list(Parcel.objects.filter(findings__in=findings).distinct()[:25])
 def run_search(raw_query):
     """Exact (normalized) -> disambiguation -> suggestion -> none.
 
@@ -85,6 +115,15 @@ def run_search(raw_query):
         return {"match_type": "exact", "parcel": exact.first()}
     if n > 1:
         return {"match_type": "multiple", "parcels": list(exact[:25])}
+
+    # Alternate identifiers (Cf cross-reference / Original / secondary LR) that the
+    # source lists alongside the primary key. A precise id match, so a single hit is
+    # treated as exact rather than a mere suggestion.
+    alt = _parcels_by_alternate_id(raw)
+    if len(alt) == 1:
+        return {"match_type": "exact", "parcel": alt[0]}
+    if len(alt) > 1:
+        return {"match_type": "multiple", "parcels": alt}
 
     # Fuzzy: same numeric stem with broader naming context (PRD 2.1).
     suggestions = []
@@ -176,6 +215,35 @@ def _dedupe(findings):
     return unique
 
 
+# A labelled registrable reference inside parcel_id_raw: an optional Cf / Original /
+# L.R. / I.R. prefix followed by the number (slash ref or 4-6 digit).
+_LABELLED_REF = re.compile(
+    r"(Cf|Original|Orig|L\.?\s*R\.?|I\.?\s*R\.?)?\.?\s*"
+    r"(\d{1,5}/\d{2,6}[A-Za-z]?(?:/\d+[A-Za-z]?)*|\d{4,6})",
+    re.I,
+)
+_REF_LABELS = {"cf": "Cf", "original": "Original", "orig": "Original",
+               "lr": "L.R.", "ir": "I.R."}
+
+
+def _associated_references(findings, shown_id):
+    """Other registrable references the Ndung'u source records for the SAME plot —
+    the Cf cross-reference, Original, and secondary LR numbers in parcel_id_raw —
+    excluding the one already shown. Lets a user who searched by one reference (e.g.
+    the Cf number) see the plot's other identifiers."""
+    shown = normalize_parcel_id(shown_id)
+    seen, refs = set(), []
+    for f in findings:
+        for label, num in _LABELLED_REF.findall(f.parcel_id_raw or ""):
+            norm = normalize_parcel_id(num)
+            if not norm or norm == shown or norm in seen:
+                continue
+            seen.add(norm)
+            pretty = _REF_LABELS.get(re.sub(r"[.\s]", "", label).lower(), "")
+            refs.append(f"{pretty} {num}".strip())
+    return refs
+
+
 def build_certificate(parcel, searched_id):
     """Progressive-disclosure encumbrance certificate (PRD 2.2 / 3.2)."""
     findings = _dedupe(sorted(
@@ -227,16 +295,21 @@ def build_certificate(parcel, searched_id):
         f"{'entry' if len(findings) == 1 else 'entries'} found across "
         f"Volume {' and '.join(roman) if roman else 'I-III'}"
     )
+    also_recorded_as = _associated_references(findings, shown_id)
+
+    overview = {
+        "banner": "Encumbrance Found",
+        "parcel": shown_id,
+        "records_matched": len(findings),
+        "volumes": roman,
+        "summary": summary,
+    }
+    if also_recorded_as:
+        overview["also_recorded_as"] = also_recorded_as
 
     return {
         "status": "encumbrance_found",
-        "overview": {
-            "banner": "Encumbrance Found",
-            "parcel": shown_id,
-            "records_matched": len(findings),
-            "volumes": roman,
-            "summary": summary,
-        },
+        "overview": overview,
         "tier_a_summary": {
             "searched_id": shown_id,
             "matched_parcel_id": parcel.parcel_id_clean,

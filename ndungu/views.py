@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from .models import CertificateLog, Parcel, normalize_parcel_id
 from .services import (
+    _parcels_by_alternate_id,
     build_certificate,
     build_nil_certificate,
     log_search,
@@ -96,6 +97,11 @@ class CertificatePDFView(APIView):
         parcel = Parcel.objects.filter(
             Q(normalized_lr=normalized) | Q(parcel_id_clean__iexact=q)
         ).first()
+        if parcel is None:
+            # Resolve Cf / Original / secondary-LR references the same way search does.
+            alt = _parcels_by_alternate_id(q)
+            if len(alt) == 1:
+                parcel = alt[0]
 
         if parcel is not None:
             count = parcel.findings.count()
