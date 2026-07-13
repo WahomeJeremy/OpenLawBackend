@@ -95,9 +95,14 @@ def _parcels_by_alternate_id(raw):
     tokens = _identifier_tokens(raw)
     if not tokens:
         return []
+    # Boundary via explicit character classes, not \b: PostgreSQL's regex engine
+    # (production) reads \b as a backspace, so \b-boundaries silently match nothing.
+    # (^|[^0-9/]) ... ([^0-9/]|$) works identically on SQLite and PostgreSQL and
+    # keeps a token from matching inside a longer number or slash reference.
     findings = Finding.objects.all()
     for tok in tokens:
-        findings = findings.filter(parcel_id_raw__iregex=r"\b" + re.escape(tok) + r"\b")
+        findings = findings.filter(
+            parcel_id_raw__iregex=r"(^|[^0-9/])" + re.escape(tok) + r"([^0-9/]|$)")
     return list(Parcel.objects.filter(findings__in=findings).distinct()[:25])
 def run_search(raw_query):
     """Exact (normalized) -> disambiguation -> suggestion -> none.
