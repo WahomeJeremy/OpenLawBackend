@@ -3,6 +3,7 @@
 Pure functions that build the structured certificate payloads. Endpoints in
 views.py call these and persist the audit ledger entry.
 """
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -69,6 +70,40 @@ def _aggregate_recommendation(findings):
 # --------------------------------------------------------------------------- #
 #  Search
 # --------------------------------------------------------------------------- #
+# A single Ndung'u finding is indexed under ONE canonical key, but the source
+# routinely lists several registrable references for the same plot, e.g.
+# "L.R. 19095 Original 12661 Cf 157469". Only the primary LR (19095) becomes a
+# Parcel key; the cross-reference (Cf) and "Original" numbers live only in
+# Finding.parcel_id_raw. A search on any of those must still resolve to the plot,
+# so we scan parcel_id_raw for the query's identifier tokens.
+#
+# A token is a slash-style ref (209/11642, 12661/82) or a standalone 4-6 digit
+# number. Short/bare numbers are intentionally excluded — they are handled by the
+# normalized_lr path and would produce noisy substring hits here.
+_ID_TOKEN = re.compile(r"\b\d{1,5}/\d{2,6}[A-Za-z]?(?:/\d+[A-Za-z]?)*\b|\b\d{4,6}\b")
+
+
+def _identifier_tokens(raw):
+    return {m.group(0) for m in _ID_TOKEN.finditer(raw or "")}
+
+
+def _parcels_by_alternate_id(raw):
+    """Distinct parcels reachable via an alternate identifier (Cf / Original /
+    secondary LR) embedded in a finding's parcel_id_raw. Every identifier token in
+    the query must appear (word-bounded) in the SAME finding, so a multi-part query
+    like "LR 19095 original 12661" resolves precisely rather than fanning out."""
+    tokens = _identifier_tokens(raw)
+    if not tokens:
+        return []
+    # Boundary via explicit character classes, not \b: PostgreSQL's regex engine
+    # (production) reads \b as a backspace, so \b-boundaries silently match nothing.
+    # (^|[^0-9/]) ... ([^0-9/]|$) works identically on SQLite and PostgreSQL and
+    # keeps a token from matching inside a longer number or slash reference.
+    findings = Finding.objects.all()
+    for tok in tokens:
+        findings = findings.filter(
+            parcel_id_raw__iregex=r"(^|[^0-9/])" + re.escape(tok) + r"([^0-9/]|$)")
+    return list(Parcel.objects.filter(findings__in=findings).distinct()[:25])
 def run_search(raw_query):
     """Exact (normalized) -> disambiguation -> suggestion -> none.
 
@@ -85,6 +120,15 @@ def run_search(raw_query):
         return {"match_type": "exact", "parcel": exact.first()}
     if n > 1:
         return {"match_type": "multiple", "parcels": list(exact[:25])}
+
+    # Alternate identifiers (Cf cross-reference / Original / secondary LR) that the
+    # source lists alongside the primary key. A precise id match, so a single hit is
+    # treated as exact rather than a mere suggestion.
+    alt = _parcels_by_alternate_id(raw)
+    if len(alt) == 1:
+        return {"match_type": "exact", "parcel": alt[0]}
+    if len(alt) > 1:
+        return {"match_type": "multiple", "parcels": alt}
 
     # Fuzzy: same numeric stem with broader naming context (PRD 2.1).
     suggestions = []
@@ -176,6 +220,35 @@ def _dedupe(findings):
     return unique
 
 
+# A labelled registrable reference inside parcel_id_raw: an optional Cf / Original /
+# L.R. / I.R. prefix followed by the number (slash ref or 4-6 digit).
+_LABELLED_REF = re.compile(
+    r"(Cf|Original|Orig|L\.?\s*R\.?|I\.?\s*R\.?)?\.?\s*"
+    r"(\d{1,5}/\d{2,6}[A-Za-z]?(?:/\d+[A-Za-z]?)*|\d{4,6})",
+    re.I,
+)
+_REF_LABELS = {"cf": "Cf", "original": "Original", "orig": "Original",
+               "lr": "L.R.", "ir": "I.R."}
+
+
+def _associated_references(findings, shown_id):
+    """Other registrable references the Ndung'u source records for the SAME plot —
+    the Cf cross-reference, Original, and secondary LR numbers in parcel_id_raw —
+    excluding the one already shown. Lets a user who searched by one reference (e.g.
+    the Cf number) see the plot's other identifiers."""
+    shown = normalize_parcel_id(shown_id)
+    seen, refs = set(), []
+    for f in findings:
+        for label, num in _LABELLED_REF.findall(f.parcel_id_raw or ""):
+            norm = normalize_parcel_id(num)
+            if not norm or norm == shown or norm in seen:
+                continue
+            seen.add(norm)
+            pretty = _REF_LABELS.get(re.sub(r"[.\s]", "", label).lower(), "")
+            refs.append(f"{pretty} {num}".strip())
+    return refs
+
+
 def build_certificate(parcel, searched_id):
     """Progressive-disclosure encumbrance certificate (PRD 2.2 / 3.2)."""
     findings = _dedupe(sorted(
@@ -227,16 +300,21 @@ def build_certificate(parcel, searched_id):
         f"{'entry' if len(findings) == 1 else 'entries'} found across "
         f"Volume {' and '.join(roman) if roman else 'I-III'}"
     )
+    also_recorded_as = _associated_references(findings, shown_id)
+
+    overview = {
+        "banner": "Encumbrance Found",
+        "parcel": shown_id,
+        "records_matched": len(findings),
+        "volumes": roman,
+        "summary": summary,
+    }
+    if also_recorded_as:
+        overview["also_recorded_as"] = also_recorded_as
 
     return {
         "status": "encumbrance_found",
-        "overview": {
-            "banner": "Encumbrance Found",
-            "parcel": shown_id,
-            "records_matched": len(findings),
-            "volumes": roman,
-            "summary": summary,
-        },
+        "overview": overview,
         "tier_a_summary": {
             "searched_id": shown_id,
             "matched_parcel_id": parcel.parcel_id_clean,
@@ -251,6 +329,76 @@ def build_certificate(parcel, searched_id):
             "action": _aggregate_recommendation(findings),
             "raw_quotes": _dedupe_quotes(findings),
         },
+        "disclaimer": DISCLAIMER,
+    }
+
+
+def elc_nil_statement(searched_id):
+    return f"No ELC litigation case recorded against parcel {searched_id}."
+
+
+def _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info):
+    parts = []
+    if ndungu_found:
+        parts.append(ndungu_cert["overview"]["summary"])
+    if elc_found:
+        n = len(litigation_info["matches"])
+        parts.append(f"{n} ELC litigation {'case' if n == 1 else 'cases'} found")
+    if not parts:
+        return ""
+    return " · ".join(parts)
+
+
+def build_combined_certificate(parcel, litigation_info, shown_id):
+    """Combine a (possibly absent) Ndung'u match with (possibly absent) ELC
+    litigation into ONE certificate payload -- our encumbrance verdict is now
+    Ndung'u OR ELC (LR conversion stays separate, pure reference data).
+
+    ALWAYS returns both a `ndungu` and an `elc` section (each `found` or not,
+    with an explicit statement when not), regardless of overall status --
+    the frontend uses this to offer a source picker even on a fully NIL
+    result. The Ndung'u "not found" text reuses build_nil_certificate's
+    mandatory legal phrasing (PRD 3.1), just nested under `ndungu` instead of
+    being the whole document.
+    """
+    ndungu_cert = build_certificate(parcel, shown_id) if parcel is not None else None
+    ndungu_found = ndungu_cert is not None
+    elc_found = bool(litigation_info)
+
+    overview_parcel = ndungu_cert["overview"]["parcel"] if ndungu_found else shown_id
+    overall_status = "encumbrance_found" if (ndungu_found or elc_found) else "no_encumbrance"
+
+    if ndungu_found:
+        ndungu_section = {
+            "found": True,
+            "tier_a_summary": ndungu_cert["tier_a_summary"],
+            "tier_b_timeline": ndungu_cert["tier_b_timeline"],
+            "tier_c_recommendation": ndungu_cert["tier_c_recommendation"],
+            **({"also_recorded_as": ndungu_cert["overview"]["also_recorded_as"]}
+               if "also_recorded_as" in ndungu_cert["overview"] else {}),
+        }
+    else:
+        nil = build_nil_certificate(overview_parcel)
+        ndungu_section = {
+            "found": False,
+            "legal_statement": nil["legal_statement"],
+            "search_scope": nil["search_scope"],
+        }
+
+    elc_section = (
+        {"found": True, "matches": litigation_info["matches"]} if elc_found else
+        {"found": False, "nil_statement": elc_nil_statement(overview_parcel)}
+    )
+
+    return {
+        "status": overall_status,
+        "overview": {
+            "banner": "Encumbrance Found" if overall_status == "encumbrance_found" else "No Encumbrance Recorded",
+            "parcel": overview_parcel,
+            "summary": _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info),
+        },
+        "ndungu": ndungu_section,
+        "elc": elc_section,
         "disclaimer": DISCLAIMER,
     }
 
@@ -294,31 +442,6 @@ def log_search(searched_id, normalized, results_count, status, parcel=None):
 # --------------------------------------------------------------------------- #
 #  PDF rendering (WeasyPrint)
 # --------------------------------------------------------------------------- #
-def _content_bottom_px(page):
-    """Bottom Y (CSS px) of the real content on a page, ignoring the fixed
-    watermark and the page margin boxes (e.g. the footer)."""
-    root = None
-    for child in page._page_box.children:
-        if getattr(child, "element_tag", None) == "html":
-            root = child
-            break
-    if root is None:
-        return page._page_box.height
-
-    def deepest(box):
-        try:
-            if box.style["position"] == "fixed":   # skip the watermark
-                return 0.0
-        except (KeyError, TypeError, AttributeError):
-            pass
-        bottom = (getattr(box, "position_y", 0) or 0) + (getattr(box, "height", 0) or 0)
-        for child in getattr(box, "children", ()) or ():
-            bottom = max(bottom, deepest(child))
-        return bottom
-
-    return deepest(root)
-
-
 def verify_url(reference):
     """Public verify-page URL the certificate QR resolves to."""
     base = getattr(settings, "NDUNGU_VERIFY_URL", "https://legal.ke/verify")
@@ -338,20 +461,19 @@ def qr_data_uri(data):
 
 
 def render_certificate_pdf(cert, meta):
-    """Render a certificate to a content-height PDF (no trailing whitespace).
+    """Render a certificate to a standard, naturally-paginated A4 PDF.
 
-    Lays the certificate out on one very tall page, measures where the content
-    actually ends, then re-renders on a page sized exactly to that content.
+    Certificates now combine Ndung'u findings with ELC litigation and can run
+    long -- rather than force everything onto one custom-height page, content
+    flows across as many normal A4 pages as it needs (the template's own
+    @page rule already carries the repeating "Page X of Y" footer).
     """
     from django.template.loader import render_to_string
-    from weasyprint import CSS, HTML  # lazy import: native libs only needed here
+    from weasyprint import HTML  # lazy import: native libs only needed here
 
-    html = render_to_string("ndungu/certificate.html", {"cert": cert, "meta": meta})
-
-    measure = CSS(string="@page { size: 210mm 6000mm; }")
-    page = HTML(string=html).render(stylesheets=[measure]).pages[0]
-    content_mm = _content_bottom_px(page) / 96 * 25.4
-    height_mm = max(content_mm + 12 + 4, 90)  # + bottom margin + slack
-
-    fit = CSS(string=f"@page {{ size: 210mm {height_mm:.0f}mm; }}")
-    return HTML(string=html).write_pdf(stylesheets=[fit])
+    # Verification QR the certificate carries; a scan opens the public verify page.
+    qr = qr_data_uri(meta.get("verify_url", ""))
+    html = render_to_string(
+        "ndungu/certificate.html", {"cert": cert, "meta": meta, "qr": qr}
+    )
+    return HTML(string=html).write_pdf()

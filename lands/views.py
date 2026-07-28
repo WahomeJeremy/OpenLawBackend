@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from .models import Land, SearchableReference
+from cases.models import Case
+from cases.serializers import CaseSerializer
 import re
 
 
@@ -15,13 +17,21 @@ class LandPagination(PageNumberPagination):
 
 class LandSerializer(serializers.ModelSerializer):
     cases_count = serializers.SerializerMethodField()
+    cases = serializers.SerializerMethodField()
     
     class Meta:
         model = Land
-        fields = '__all__'
+        fields = ('id', 'title_number', 'lr_number', 'plot_number', 'certificate_number', 'allotment_number', 
+                  'county', 'normalized_lr', 'title_system', 'judgment_type', 'plaintiff', 'defendant', 
+                  'court_station', 'year_filed', 'created_at', 'cases_count', 'cases')
     
     def get_cases_count(self, obj):
         return obj.cases.count()
+    
+    def get_cases(self, obj):
+        # Serialize the related cases
+        cases = obj.cases.all()
+        return CaseSerializer(cases, many=True).data
 
 
 class LandListView(generics.ListAPIView):
@@ -158,14 +168,15 @@ class LandSearchView(APIView):
         if not query:
             return Response({'error': 'Search query is required'}, status=400)
         
-        # Validate that the query is a complete land identifier
-        if not self.is_valid_land_identifier(query):
-            return Response({
-                'message': 'No land records found. Please confirm the LR number or title deed number and try again.',
-                'query': query,
-                'results': [],
-                'count': 0
-            }, status=404)
+        # Validate that query is a complete land identifier
+        # Temporarily disable validation to allow all searches
+        # if not self.is_valid_land_identifier(query):
+        #     return Response({
+        #         'message': 'No land records found. Please confirm LR number or title deed number and try again.',
+        #         'query': query,
+        #         'results': [],
+        #         'count': 0
+        #     }, status=404)
         
         lands = Land.objects.filter(
             Q(title_number__icontains=query) |
@@ -177,11 +188,10 @@ class LandSearchView(APIView):
         
         if not lands.exists():
             return Response({
-                'message': 'No land records found. Please confirm the LR number or title deed number and try again.',
                 'query': query,
                 'results': [],
                 'count': 0
-            }, status=404)
+            }, status=200)
         
         serializer = LandSerializer(lands, many=True)
         return Response({

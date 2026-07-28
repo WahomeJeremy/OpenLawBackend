@@ -10,10 +10,13 @@ from rest_framework import status as http_status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from conversions.services import find_conversions
+from litigation.services import find_litigation
+
 from .models import CertificateLog, Parcel, normalize_parcel_id
 from .services import (
-    build_certificate,
-    build_nil_certificate,
+    _parcels_by_alternate_id,
+    build_combined_certificate,
     log_search,
     now_eat,
     render_certificate_pdf,
@@ -50,19 +53,15 @@ class SearchView(APIView):
 
         normalized = normalize_parcel_id(q)
         result = run_search(q)
-
-        if result["match_type"] == "exact":
-            parcel = result["parcel"]
-            count = parcel.findings.count()
-            cert = build_certificate(parcel, q)
-            shown = cert["overview"]["parcel"]  # friendly id (never a synthetic key)
-            ref = log_search(shown, normalized, count, "encumbrance_found", parcel)
-            cert["metadata"] = _metadata(request, shown, ref)
-            return Response(cert)
+        # LR-conversion stays pure reference data, independent of the verdict.
+        # ELC litigation now DOES factor into the verdict, alongside Ndung'u --
+        # our "encumbrance" is Ndung'u OR ELC; conversion never decides it.
+        conversion_info = find_conversions(q)
+        litigation_info = find_litigation(q)
 
         if result["match_type"] in ("suggestions", "multiple"):
             ref = log_search(q, normalized, len(result["parcels"]), "suggestions")
-            return Response({
+            payload = {
                 "status": "suggestions",
                 "metadata": _metadata(request, q, ref),
                 "message": (
@@ -70,13 +69,23 @@ class SearchView(APIView):
                     "Select a parcel or refine with a location."
                 ),
                 "suggestions": [suggestion_payload(p) for p in result["parcels"]],
-            })
+            }
+            if conversion_info:
+                payload["conversion_info"] = conversion_info
+            if litigation_info:
+                payload["litigation_info"] = litigation_info
+            return Response(payload)
 
-        # No match -> NIL certificate.
-        ref = log_search(q, normalized, 0, "no_encumbrance")
-        nil = build_nil_certificate(q)
-        nil["metadata"] = _metadata(request, q, ref)
-        return Response(nil)
+        parcel = result["parcel"] if result["match_type"] == "exact" else None
+        combined = build_combined_certificate(parcel, litigation_info, q)
+
+        shown = combined["overview"]["parcel"]
+        count = parcel.findings.count() if parcel else 0
+        ref = log_search(shown, normalized, count, combined["status"], parcel)
+        combined["metadata"] = _metadata(request, shown, ref)
+        if conversion_info:
+            combined["conversion_info"] = conversion_info
+        return Response(combined)
 
 
 class CertificatePDFView(APIView):
@@ -96,16 +105,17 @@ class CertificatePDFView(APIView):
         parcel = Parcel.objects.filter(
             Q(normalized_lr=normalized) | Q(parcel_id_clean__iexact=q)
         ).first()
+        if parcel is None:
+            # Resolve Cf / Original / secondary-LR references the same way search does.
+            alt = _parcels_by_alternate_id(q)
+            if len(alt) == 1:
+                parcel = alt[0]
 
-        if parcel is not None:
-            count = parcel.findings.count()
-            cert = build_certificate(parcel, q)
-            shown = cert["overview"]["parcel"]  # friendly id (never a synthetic key)
-            ref = log_search(shown, normalized, count, "encumbrance_found", parcel)
-        else:
-            cert = build_nil_certificate(q)
-            shown = q
-            ref = log_search(q, normalized, 0, "no_encumbrance")
+        litigation_info = find_litigation(q)
+        cert = build_combined_certificate(parcel, litigation_info, q)
+        shown = cert["overview"]["parcel"]
+        count = parcel.findings.count() if parcel else 0
+        ref = log_search(shown, normalized, count, cert["status"], parcel)
 
         # "Searched" is what the user typed; "Matched" is the record we resolved
         # to. Only carry Matched when it isn't a 1-to-1 match (e.g. name search).
@@ -114,6 +124,10 @@ class CertificatePDFView(APIView):
         if shown and shown != searched_display:
             meta["matched_parcel_id"] = shown
         cert["metadata"] = meta
+
+        conversion_info = find_conversions(q)
+        if conversion_info:
+            cert["conversion_info"] = conversion_info
 
         try:
             pdf = render_certificate_pdf(cert, meta)

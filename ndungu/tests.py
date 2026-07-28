@@ -121,6 +121,24 @@ class CertificateBuilderTests(TestCase):
         self.assertEqual(cert["overview"]["parcel"], "Karura Forest")
         self.assertNotIn("::", cert["tier_a_summary"]["searched_id"])
 
+    def test_also_recorded_as_lists_other_references(self):
+        """A plot with several registrable refs surfaces the others (Cf / Original
+        / secondary LR) on the certificate, excluding the one searched."""
+        p = make_parcel("19095", display="19095")
+        make_finding(p, "r_cf",
+                     parcel_id_raw="L.R. 19095 Original 12661 Cf 157469 Park View")
+        # searched by the primary LR -> shows the Cf and Original numbers
+        ov = build_certificate(p, "19095")["overview"]
+        self.assertEqual(ov["also_recorded_as"], ["Original 12661", "Cf 157469"])
+        # searched by the Cf number -> shows the LR and Original numbers instead
+        ov = build_certificate(p, "157469")["overview"]
+        self.assertEqual(ov["also_recorded_as"], ["L.R. 19095", "Original 12661"])
+
+    def test_no_also_recorded_as_when_single_reference(self):
+        p = make_parcel("209/5001", display="209/5001")
+        make_finding(p, "r_single", parcel_id_raw="L.R. 209/5001")
+        self.assertNotIn("also_recorded_as", build_certificate(p, "209/5001")["overview"])
+
     def test_nil_certificate_legal_phrasing(self):
         nil = build_nil_certificate("999/99999")
         self.assertEqual(nil["status"], "no_encumbrance")
@@ -150,6 +168,32 @@ class SearchTests(TestCase):
             flag_category="x", source_volume="1", source_page="1")
         r = run_search("Joseph Mwangi")
         self.assertEqual(r["match_type"], "suggestions")
+
+    def test_cross_reference_number_resolves(self):
+        """A Cf / Original number embedded in parcel_id_raw (not itself a Parcel
+        key) resolves to the parcel it belongs to — we can't rely on the LR alone."""
+        p = make_parcel("19095", display="19095")
+        make_finding(p, "r_cf",
+                     parcel_id_raw="L.R. 19095 Original 12661 Cf 157469 Park View")
+        # bare cross-reference number -> the parcel, treated as an exact hit
+        r = run_search("157469")
+        self.assertEqual(r["match_type"], "exact")
+        self.assertEqual(r["parcel"], p)
+        # the "Original" number likewise resolves to the same parcel
+        self.assertEqual(run_search("12661")["parcel"], p)
+
+    def test_multipart_reference_string_resolves(self):
+        """A full multi-part reference the user copies verbatim still finds the
+        parcel even though it doesn't normalise to the single LR key."""
+        p = make_parcel("19095", display="19095")
+        make_finding(p, "r_multi",
+                     parcel_id_raw="L.R. 19095 Original 12661 Cf 157469 Park View")
+        r = run_search("LR 19095 original 12661")
+        self.assertIn(p, r.get("parcels", [r.get("parcel")]))
+
+    def test_alternate_id_does_not_break_nil(self):
+        r = run_search("157470")  # a near-miss number absent from every finding
+        self.assertEqual(r["match_type"], "none")
 
 
 # --------------------------------------------------------------------------- #
