@@ -45,6 +45,10 @@ class Command(BaseCommand):
 
     def process_row(self, row, row_num):
         """Process a single CSV row"""
+        # Extract year from first column (works for all CSV formats)
+        first_col_value = list(row.values())[0] if row else ''
+        extracted_year = self.extract_year_from_first_col(first_col_value)
+        
         # Handle both 2013 and 2019 CSV formats
         if 'case_id' in row:
             # 2013 CSV format
@@ -52,7 +56,7 @@ class Command(BaseCommand):
             plaintiff = row.get('plaintiff', '').strip()
             defendant = row.get('defendant', '').strip()
             court = row.get('court', '').strip()
-            year_filed = self.parse_int(row.get('year_filed', 0))
+            year_filed = extracted_year  # Use extracted year
             land_references = row.get('land_references', '').strip()
             case_title = row.get('case_title', '').strip()
             url = row.get('url', '').strip()
@@ -65,8 +69,8 @@ class Command(BaseCommand):
             parties = f'Plaintiff: {plaintiff}\nDefendant: {defendant}'
             
         else:
-            # 2019 CSV format (existing logic)
-            year_filed = self.parse_int(row.get('year_filed', 0))
+            # 2017/2019 CSV format (existing logic)
+            year_filed = extracted_year  # Use extracted year
             court_station = row.get('court_station', '').strip()
             plaintiff = row.get('plaintiff', '').strip()
             defendant = row.get('defendant', '').strip()
@@ -89,7 +93,7 @@ class Command(BaseCommand):
             case_number=case_number,
             defaults={
                 'case_name': case_name,
-                'year': year_filed,
+                'year': year_filed,  # Use extracted year
                 'court': court_station if 'case_id' in row else court,
                 'status': judgment_type,
                 'summary': parties,
@@ -109,9 +113,26 @@ class Command(BaseCommand):
             land_refs = self.extract_land_references_from_text(land_references)
             
             for ref in land_refs:
-                land = self.get_or_create_land(ref)
+                land = self.get_or_create_land(ref, judgment_type, year_filed)
                 case.lands.add(land)
                 self.stdout.write(f'Linked case {case_number} to land {ref}')
+
+    def extract_year_from_first_col(self, first_col_value):
+        """Extract year from first column value"""
+        if not first_col_value:
+            return None
+            
+        # If it's already a year number, return it
+        if first_col_value.isdigit() and len(first_col_value) == 4:
+            return int(first_col_value)
+        
+        # Look for 4-digit year patterns in the string
+        import re
+        year_match = re.search(r'\b(20\d{2})\b', str(first_col_value))
+        if year_match:
+            return int(year_match.group(1))
+        
+        return None
 
     def extract_case_number(self, case_title):
         """Extract case number from case title"""
@@ -160,7 +181,7 @@ class Command(BaseCommand):
         
         return list(set(cleaned_refs))  # Remove duplicates
 
-    def get_or_create_land(self, reference):
+    def get_or_create_land(self, reference, judgment_type=None, year_filed=None):
         """Get or create land record from reference"""
         if not reference or len(reference.strip()) < 3:
             return None
@@ -177,10 +198,19 @@ class Command(BaseCommand):
         ).first()
 
         if land:
+            # Update existing land with judgment_type and year_filed if provided
+            if judgment_type and not land.judgment_type:
+                land.judgment_type = judgment_type
+                land.save()
+            if year_filed and not land.year_filed:
+                land.year_filed = year_filed
+                land.save()
             return land
 
         # Create new land record with proper field assignment
         land_data = self.detect_land_fields(reference)
+        land_data['judgment_type'] = judgment_type
+        land_data['year_filed'] = year_filed
         land = Land.objects.create(**land_data)
         self.stdout.write(f'Created land: {reference} -> {land_data}')
         return land
