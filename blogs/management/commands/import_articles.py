@@ -18,26 +18,43 @@ from blogs.models import Category, Article
 DATA = os.path.join(settings.BASE_DIR, "blogs", "data", "articles.json")
 
 # key -> Category fields. title = journey stage, tagline = bold line, description = explainer.
+# Ordered as a land-transaction lifecycle: search -> acquire -> consents ->
+# conveyancing -> transfer/succession -> use/develop -> protect.
 CATEGORIES = [
     {
-        "key": "due_diligence", "order": 1, "title": "Due Diligence",
-        "tagline": "The Buyer’s Checklist: Verify Before You Pay",
-        "description": "Don’t buy a lawsuit. Verify ownership, investigate the Green Card, and spot hidden legal claims before you sign a contract.",
+        "key": "search", "order": 1, "title": "Search & Due Diligence",
+        "tagline": "Before You Pay: Search, Verify, Investigate",
+        "description": "Run the searches and read the register like a lawyer — confirm who really owns the land and uncover hidden claims before a single shilling changes hands.",
     },
     {
-        "key": "purchase", "order": 2, "title": "Purchase",
-        "tagline": "Path to Ownership: Navigating Your Purchase",
-        "description": "From sale agreements to stamp duty — the legal mechanics of acquiring land, whether through a co-operative, shares, or sectional title.",
+        "key": "acquire", "order": 2, "title": "Ways to Acquire",
+        "tagline": "Routes to Ownership: How Land Is Acquired",
+        "description": "The lawful ways to come to own land in Kenya — the recognised methods of acquiring title, buying through a co-operative, and how public land is allocated.",
     },
     {
-        "key": "transfer", "order": 3, "title": "Transfer",
-        "tagline": "Moving Title Deeds: Transfers, Leases & Inheritance",
-        "description": "Ownership changes, and so do the rules. Navigate transferring land through inheritance, managing leases, and handling lost title deeds.",
+        "key": "consents", "order": 3, "title": "Consents & Clearances",
+        "tagline": "Clearing the Way: Consents Before You Register",
+        "description": "The approvals a dealing needs before it can be registered — Land Control Board and mandatory spousal consent, plus the rates and rent clearances that unlock a transfer.",
     },
     {
-        "key": "caution", "order": 4, "title": "Caution",
-        "tagline": "Protecting Your Title: Managing Cautions & Risks",
-        "description": "Secure your investment against fraud or third-party interference using cautions, inhibitions, and restrictions to lock your title.",
+        "key": "conveyancing", "order": 4, "title": "Conveyancing & Costs",
+        "tagline": "Closing the Deal: Conveyancing, Duty & Authority",
+        "description": "The paperwork and money that complete a transaction — stamp duty, capital gains tax and land rates, and using a power of attorney to execute a dealing on your behalf.",
+    },
+    {
+        "key": "transfer", "order": 5, "title": "Transfer & Succession",
+        "tagline": "Passing It On: Transfers, Death & Court Orders",
+        "description": "How title moves after you own it — passing land by operation of law on death through transmission, and transferring property by a court vesting order.",
+    },
+    {
+        "key": "use", "order": 6, "title": "Use & Develop",
+        "tagline": "Working the Land: Leases, Licences & Subdivision",
+        "description": "Dealings short of outright sale — granting, extending and ending leases and licences, and subdividing or surveying land into new titles.",
+    },
+    {
+        "key": "protect", "order": 7, "title": "Protect Your Title",
+        "tagline": "Locking It Down: Cautions, Claims & Recovery",
+        "description": "Defend your investment against fraud, adverse possession and lost records — with cautions, inhibitions and restrictions, and by reconstructing a lost register or title.",
     },
 ]
 
