@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     "certificates",
     "blogs",
     "ndungu",
+    "conversions",
+    "litigation",
 ]
 
 MIDDLEWARE = [

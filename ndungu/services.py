@@ -333,6 +333,76 @@ def build_certificate(parcel, searched_id):
     }
 
 
+def elc_nil_statement(searched_id):
+    return f"No ELC litigation case recorded against parcel {searched_id}."
+
+
+def _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info):
+    parts = []
+    if ndungu_found:
+        parts.append(ndungu_cert["overview"]["summary"])
+    if elc_found:
+        n = len(litigation_info["matches"])
+        parts.append(f"{n} ELC litigation {'case' if n == 1 else 'cases'} found")
+    if not parts:
+        return ""
+    return " · ".join(parts)
+
+
+def build_combined_certificate(parcel, litigation_info, shown_id):
+    """Combine a (possibly absent) Ndung'u match with (possibly absent) ELC
+    litigation into ONE certificate payload -- our encumbrance verdict is now
+    Ndung'u OR ELC (LR conversion stays separate, pure reference data).
+
+    ALWAYS returns both a `ndungu` and an `elc` section (each `found` or not,
+    with an explicit statement when not), regardless of overall status --
+    the frontend uses this to offer a source picker even on a fully NIL
+    result. The Ndung'u "not found" text reuses build_nil_certificate's
+    mandatory legal phrasing (PRD 3.1), just nested under `ndungu` instead of
+    being the whole document.
+    """
+    ndungu_cert = build_certificate(parcel, shown_id) if parcel is not None else None
+    ndungu_found = ndungu_cert is not None
+    elc_found = bool(litigation_info)
+
+    overview_parcel = ndungu_cert["overview"]["parcel"] if ndungu_found else shown_id
+    overall_status = "encumbrance_found" if (ndungu_found or elc_found) else "no_encumbrance"
+
+    if ndungu_found:
+        ndungu_section = {
+            "found": True,
+            "tier_a_summary": ndungu_cert["tier_a_summary"],
+            "tier_b_timeline": ndungu_cert["tier_b_timeline"],
+            "tier_c_recommendation": ndungu_cert["tier_c_recommendation"],
+            **({"also_recorded_as": ndungu_cert["overview"]["also_recorded_as"]}
+               if "also_recorded_as" in ndungu_cert["overview"] else {}),
+        }
+    else:
+        nil = build_nil_certificate(overview_parcel)
+        ndungu_section = {
+            "found": False,
+            "legal_statement": nil["legal_statement"],
+            "search_scope": nil["search_scope"],
+        }
+
+    elc_section = (
+        {"found": True, "matches": litigation_info["matches"]} if elc_found else
+        {"found": False, "nil_statement": elc_nil_statement(overview_parcel)}
+    )
+
+    return {
+        "status": overall_status,
+        "overview": {
+            "banner": "Encumbrance Found" if overall_status == "encumbrance_found" else "No Encumbrance Recorded",
+            "parcel": overview_parcel,
+            "summary": _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info),
+        },
+        "ndungu": ndungu_section,
+        "elc": elc_section,
+        "disclaimer": DISCLAIMER,
+    }
+
+
 def build_nil_certificate(searched_id):
     """NIL certificate with the PRD 3.1 mandatory legal phrasing."""
     date_str = f"{now_eat():%d/%m/%Y}"
@@ -372,31 +442,6 @@ def log_search(searched_id, normalized, results_count, status, parcel=None):
 # --------------------------------------------------------------------------- #
 #  PDF rendering (WeasyPrint)
 # --------------------------------------------------------------------------- #
-def _content_bottom_px(page):
-    """Bottom Y (CSS px) of the real content on a page, ignoring the fixed
-    watermark and the page margin boxes (e.g. the footer)."""
-    root = None
-    for child in page._page_box.children:
-        if getattr(child, "element_tag", None) == "html":
-            root = child
-            break
-    if root is None:
-        return page._page_box.height
-
-    def deepest(box):
-        try:
-            if box.style["position"] == "fixed":   # skip the watermark
-                return 0.0
-        except (KeyError, TypeError, AttributeError):
-            pass
-        bottom = (getattr(box, "position_y", 0) or 0) + (getattr(box, "height", 0) or 0)
-        for child in getattr(box, "children", ()) or ():
-            bottom = max(bottom, deepest(child))
-        return bottom
-
-    return deepest(root)
-
-
 def verify_url(reference):
     """Public verify-page URL the certificate QR resolves to."""
     base = getattr(settings, "NDUNGU_VERIFY_URL", "https://legal.ke/verify")
@@ -416,20 +461,19 @@ def qr_data_uri(data):
 
 
 def render_certificate_pdf(cert, meta):
-    """Render a certificate to a content-height PDF (no trailing whitespace).
+    """Render a certificate to a standard, naturally-paginated A4 PDF.
 
-    Lays the certificate out on one very tall page, measures where the content
-    actually ends, then re-renders on a page sized exactly to that content.
+    Certificates now combine Ndung'u findings with ELC litigation and can run
+    long -- rather than force everything onto one custom-height page, content
+    flows across as many normal A4 pages as it needs (the template's own
+    @page rule already carries the repeating "Page X of Y" footer).
     """
     from django.template.loader import render_to_string
-    from weasyprint import CSS, HTML  # lazy import: native libs only needed here
+    from weasyprint import HTML  # lazy import: native libs only needed here
 
-    html = render_to_string("ndungu/certificate.html", {"cert": cert, "meta": meta})
-
-    measure = CSS(string="@page { size: 210mm 6000mm; }")
-    page = HTML(string=html).render(stylesheets=[measure]).pages[0]
-    content_mm = _content_bottom_px(page) / 96 * 25.4
-    height_mm = max(content_mm + 12 + 4, 90)  # + bottom margin + slack
-
-    fit = CSS(string=f"@page {{ size: 210mm {height_mm:.0f}mm; }}")
-    return HTML(string=html).write_pdf(stylesheets=[fit])
+    # Verification QR the certificate carries; a scan opens the public verify page.
+    qr = qr_data_uri(meta.get("verify_url", ""))
+    html = render_to_string(
+        "ndungu/certificate.html", {"cert": cert, "meta": meta, "qr": qr}
+    )
+    return HTML(string=html).write_pdf()
