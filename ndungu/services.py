@@ -137,7 +137,8 @@ def run_search(raw_query):
             Parcel.objects.filter(normalized_lr__startswith=nq)
             .exclude(normalized_lr=nq)[:10]
         )
-    # Name / location fallback when no id-style match.
+    # Name / location fallback when no id-style match: try the whole phrase
+    # as one substring first (fast path for well-formed queries).
     if not suggestions and len(raw) >= 3:
         suggestions = list(
             Parcel.objects.filter(
@@ -146,6 +147,21 @@ def run_search(raw_query):
                 | Q(findings__location__icontains=raw)
             ).distinct()[:10]
         )
+    # A multi-word query that isn't a literal substring (skipped a middle
+    # name, words out of order, etc.) shouldn't be brushed off as "not
+    # found" -- require every word present somewhere instead, so an
+    # incomplete-but-recognizable name still surfaces its match.
+    if not suggestions:
+        words = [w for w in raw.split() if len(w) >= 2]
+        if len(words) >= 2:
+            word_q = Q()
+            for w in words:
+                word_q &= (
+                    Q(parcel_display__icontains=w)
+                    | Q(findings__current_holder__icontains=w)
+                    | Q(findings__location__icontains=w)
+                )
+            suggestions = list(Parcel.objects.filter(word_q).distinct()[:10])
     if suggestions:
         return {"match_type": "suggestions", "parcels": suggestions}
     return {"match_type": "none"}
