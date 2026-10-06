@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/certificates/", include("certificates.urls")),
     path("api/blogs/", include("blogs.urls")),
     path("api/ndungu/", include("ndungu.urls")),
+    path("api/payments/", include("payments.urls")),
     path("favicon.ico", favicon_view),
 ]
 
