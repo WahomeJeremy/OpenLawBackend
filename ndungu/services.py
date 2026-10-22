@@ -497,10 +497,10 @@ def qr_data_uri(data):
 
 
 def _logo_data_uri():
-    """Landledger lockup for the certificate header ('' if the asset is missing)."""
+    """Landledger lockup + tagline for the certificate header ('' if the asset is missing)."""
     import base64
 
-    path = settings.BASE_DIR / "ndungu" / "assets" / "landledger-logo.png"
+    path = settings.BASE_DIR / "ndungu" / "assets" / "landledger-logo-tagline.png"
     try:
         return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
     except OSError:
