@@ -13,17 +13,17 @@
 
   @page {
     size: A4;
-    margin: 20mm 21mm 30mm 21mm;
+    margin: 19mm 21mm 27mm 21mm;
     background: #FDFCF8;
     @bottom-left {
       content: "{{ links.site|cut:'https://'|cut:'http://'|default:'legal.ke' }}";
-      width: 50%; vertical-align: top; margin-top: 5mm; padding-top: 3.5mm;
+      width: 50%; vertical-align: top; margin-top: 3mm; padding-top: 3.2mm;
       border-top: 0.35mm solid #1B2A4A;
       font-family: "Outfit", "Helvetica Neue", Arial, sans-serif; font-size: 8.5pt; color: #4B5668;
     }
     @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
-      width: 50%; vertical-align: top; margin-top: 5mm; padding-top: 3.5mm; text-align: right;
+      width: 50%; vertical-align: top; margin-top: 3mm; padding-top: 3.2mm; text-align: right;
       border-top: 0.35mm solid #1B2A4A;
       font-family: "Outfit", "Helvetica Neue", Arial, sans-serif; font-size: 8.5pt; color: #4B5668;
     }
@@ -34,7 +34,7 @@
   a { color: #1B3F7A; text-decoration: underline; }
 
   /* Double-line page frame, repeated on every page. */
-  .frame { position: fixed; top: -13mm; left: -13mm; right: -13mm; bottom: -22mm;
+  .frame { position: fixed; top: -12mm; left: -13mm; right: -13mm; bottom: -19mm;
     border: 1.2mm double #243A63; }
 
   /* ---- header ---- */
@@ -110,8 +110,11 @@
   table.cases th { background: #EFF1F6; border: 0.3mm solid #8A94B0; padding: 2.2mm 3mm; text-align: left;
     font-size: 8pt; font-weight: 400; letter-spacing: 0.8px; text-transform: uppercase; color: #4B5668; }
   table.cases td { border: 0.3mm solid #8A94B0; padding: 3mm; vertical-align: top; font-size: 9.8pt; }
-  table.cases td.no { width: 12mm; }
-  table.cases td.small { width: 27mm; }
+  table.cases { table-layout: fixed; }
+  table.cases th.c-no, table.cases td.no { width: 10mm; }
+  table.cases th.c-county, table.cases td.county { width: 21mm; }
+  table.cases th.c-decision, table.cases td.decision { width: 31mm; }
+  table.cases th.c-outcome, table.cases td.outcome { width: 40mm; }
   table.cases tbody { page-break-inside: avoid; break-inside: avoid; }
   .neutral { color: #4B5668; }
   .nil { border: 0.3mm solid #8A94B0; padding: 4mm; text-align: center; color: #4B5668; }
@@ -201,15 +204,15 @@
       <div class="section">
         <h2 class="sec">Schedule of cases</h2>
         <table class="cases">
-          <thead><tr><th>No.</th><th>Case and citation</th><th>County</th><th>Decision</th><th>Outcome</th></tr></thead>
+          <thead><tr><th class="c-no">No.</th><th>Case and citation</th><th class="c-county">County</th><th class="c-decision">Decision</th><th class="c-outcome">Outcome</th></tr></thead>
           {% for m in elc_rows %}
           <tbody>
             <tr>
               <td class="no">{{ forloop.counter }}</td>
               <td>{{ m.title }}{% if m.neutral %}<br><span class="neutral">{{ m.neutral }}</span>{% endif %}</td>
-              <td class="small">{{ m.county|default:"—" }}</td>
-              <td class="small">{{ m.action|default:"—" }}{% if m.decision_date %}<br>{{ m.decision_date }}{% endif %}</td>
-              <td class="small">{{ m.outcome_status|default:"—" }}</td>
+              <td class="county">{{ m.county|default:"—" }}</td>
+              <td class="decision">{{ m.action|default:"—" }}{% if m.decision_date %}<br>{{ m.decision_date }}{% endif %}</td>
+              <td class="outcome">{{ m.outcome_status|default:"—" }}</td>
             </tr>
             {% if m.parties or m.url_link %}
             <tr class="detail">
