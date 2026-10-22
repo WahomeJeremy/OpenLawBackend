@@ -241,3 +241,31 @@ class SearchAPITests(TestCase):
             data={"parcel_id": "209/11642"}, content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res["Content-Type"], "application/pdf")
+
+
+class ImportNdunguTests(TestCase):
+    """import_ndungu must load each finding exactly once."""
+
+    def test_finding_count_matches_the_searchable_csvs(self):
+        import csv
+        import os
+        from django.conf import settings
+        from django.core.management import call_command
+
+        def rows(name):
+            path = os.path.join(settings.BASE_DIR, "data", "ndungu", name)
+            with open(path, newline="", encoding="utf-8") as fh:
+                return sum(1 for _ in csv.DictReader(fh))
+
+        call_command("import_ndungu", "--flush", verbosity=0)
+        expected = rows("master_findings.csv") + rows("aux_findings.csv")
+        self.assertEqual(Finding.objects.count(), expected)
+
+        # master_findings legitimately repeats a record_id (one source record can
+        # name several parcels), but aux records are one row each -- seeing any
+        # of them twice means a second loader re-imported the flagged_* files.
+        path = os.path.join(settings.BASE_DIR, "data", "ndungu", "aux_findings.csv")
+        with open(path, newline="", encoding="utf-8") as fh:
+            aux_ids = [r["record_id"] for r in csv.DictReader(fh)]
+        loaded = Finding.objects.filter(record_id__in=aux_ids).count()
+        self.assertEqual(loaded, len(aux_ids))
