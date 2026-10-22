@@ -309,28 +309,80 @@ class SourceAwareTests(TestCase):
 
     def _html(self, q, source):
         from django.template.loader import render_to_string
-        from ndungu.services import build_combined_certificate
+        from ndungu.services import build_combined_certificate, build_pdf_context
         from litigation.services import find_litigation
 
         parcel = Parcel.objects.filter(parcel_id_clean=q).first()
         cert = build_combined_certificate(parcel, find_litigation(q), q)
         cert["source"] = source
-        meta = {"searched_parcel_id": q, "certificate_reference": "REF-1"}
-        return render_to_string("ndungu/certificate.html", {"cert": cert, "meta": meta, "qr": ""})
+        meta = {"searched_parcel_id": q, "certificate_reference": "REF-1",
+                "generated_display": "22 Oct 2026, 10:00 EAT"}
+        return render_to_string("ndungu/certificate.html", build_pdf_context(cert, meta))
 
     def test_elc_pdf_template_shows_cases_not_ndungu_sections(self):
         html = self._html("209/11642", "elc")
-        self.assertIn("ELC Litigation Certificate", html)
+        self.assertIn("Property Litigation Search Certificate", html)
         self.assertIn("ELC Case 7 of 2019", html)
-        self.assertNotIn("Parcel Summary", html)
+        self.assertIn("Litigation found", html)
+        self.assertNotIn("Parcel summary", html)
 
-    def test_ndungu_pdf_template_is_unchanged_and_omits_elc(self):
+    def test_ndungu_pdf_template_is_ndungu_only(self):
         html = self._html("209/11642", "ndungu")
-        self.assertIn("Land Encumbrance Certificate", html)
-        self.assertIn("Parcel Summary", html)
+        self.assertIn("Certificate of Search on the Ndung", html)
+        self.assertIn("Parcel summary", html)
         self.assertNotIn("ELC Case 7 of 2019", html)
 
-    def test_elc_pdf_nil_statement(self):
+    def test_elc_pdf_nil(self):
         html = self._html("77/7", "elc")
-        self.assertIn("No ELC Litigation Recorded", html)
-        self.assertIn("No ELC litigation case recorded against parcel 77/7", html)
+        self.assertIn("No litigation record found", html)
+        self.assertIn("no case recorded against this property", html)
+
+    def test_ndungu_nil_points_to_the_litigation_search(self):
+        html = self._html("77/7", "ndungu")
+        self.assertIn("No encumbrance recorded", html)
+        self.assertIn("Property Litigation Search", html)
+
+    def test_pdf_download_filenames_follow_the_convention(self):
+        # Ndung'u: matched parcel + outcome. ELC: the search term + outcome.
+        for q, src, want in [
+            ("209/11642", "ndungu", "Ndungu_Report_Search_Certificate_209-11642_Encumbrance_Found.pdf"),
+            ("77/7", "ndungu", "Ndungu_Report_Search_Certificate_77-7_No_Encumbrance.pdf"),
+            ("209/11642", "elc", "Litigation_Search_Certificate_209-11642_Litigation_Found.pdf"),
+            ("77/7", "elc", "Litigation_Search_Certificate_77-7_No_Record.pdf"),
+        ]:
+            with patch("ndungu.views.render_certificate_pdf", return_value=b"%PDF"):
+                res = self.client.post("/api/ndungu/certificate/",
+                                       data={"parcel_id": q, "searched_term": q, "source": src},
+                                       content_type="application/json")
+            self.assertIn(f'filename="{want}"', res["Content-Disposition"])
+
+
+class CertificateHelperTests(TestCase):
+    def test_decision_dates_are_tidied_without_guessing(self):
+        from ndungu.services import format_decision_date as f
+
+        self.assertEqual(f("19 February 2026"), "19 February 2026")
+        self.assertEqual(f("6   October 2020"), "6 October 2020")
+        self.assertEqual(f("2/19/2026"), "19 February 2026")   # M/D, unambiguous
+        self.assertEqual(f("19/2/2026"), "19 February 2026")   # D/M, unambiguous
+        self.assertEqual(f("3/4/2026"), "3/4/2026")            # ambiguous: left as entered
+        self.assertEqual(f("https://new.kenyalaw.org/x"), "")  # shifted sheet column
+        self.assertEqual(f(None), "")
+
+    def test_elc_rows_split_title_from_neutral_citation(self):
+        from ndungu.services import elc_rows
+
+        row = elc_rows([{"case_citation": "A v B & 2 others [2015]\xa0KEELC\xa0728\xa0(KLR)",
+                         "court_station": "NAIROBI", "url_link": "https://x.org/a"}])[0]
+        self.assertEqual(row["title"], "A v B & 2 others")
+        self.assertEqual(row["neutral"], "[2015] KEELC 728 (KLR)")
+        self.assertEqual((row["county"], row["source_display"]), ("Nairobi", "x.org/a"))
+        plain = elc_rows([{"case_citation": "Just a title"}])[0]
+        self.assertEqual((plain["title"], plain["neutral"]), ("Just a title", ""))
+
+    def test_report_pages_dedupes_and_uses_roman_volumes(self):
+        from ndungu.services import report_pages
+
+        tl = [{"volume": "1", "page": "60"}, {"volume": "1", "page": "60"},
+              {"volume": "3", "page": "95"}, {"volume": "", "page": "9"}]
+        self.assertEqual(report_pages(tl), "Vol I, Page 60; Vol III, Page 95")

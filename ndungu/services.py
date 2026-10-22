@@ -507,21 +507,121 @@ def _logo_data_uri():
         return ""
 
 
+def report_pages(timeline):
+    """'Vol I, Page 60; Vol II, Page 12' -- the report pages a finding cites."""
+    seen = []
+    for e in timeline:
+        if e.get("volume") and e.get("page"):
+            ref = f"Vol {_ROMAN.get(str(e['volume']), e['volume'])}, Page {e['page']}"
+            if ref not in seen:
+                seen.append(ref)
+    return "; ".join(seen)
+
+
+_NEUTRAL_CITATION = re.compile(r"^(.*?)\s*(\[\d{4}\].*)$", re.S)
+
+
+_MONTHS = ("January February March April May June July August "
+           "September October November December").split()
+
+
+def format_decision_date(raw):
+    """Tidy the sheet's free-text judgment date to '19 February 2026'.
+
+    Most cells already read '19 February 2026'. A few are 'M/D/YYYY'; those are
+    only converted when one half is >12 (so the order is unambiguous) -- an
+    ambiguous '3/4/2026' is left exactly as entered rather than guessed. A cell
+    that holds a URL (the sheet has a few shifted columns) is blanked.
+    """
+    raw = re.sub(r"\s+", " ", (raw or "").replace("\xa0", " ")).strip()
+    if raw.lower().startswith("http"):
+        return ""
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
+    if m:
+        a, b, year = int(m[1]), int(m[2]), m[3]
+        if b > 12 >= a:
+            return f"{b} {_MONTHS[a - 1]} {year}"
+        if a > 12 >= b:
+            return f"{a} {_MONTHS[b - 1]} {year}"
+    return raw
+
+
+def elc_rows(matches):
+    """ELC matches prepared for the schedule table: the case title and its
+    neutral citation ('[2015] KEELC 728 (KLR)') on separate lines."""
+    rows = []
+    for m in matches:
+        cit = (m.get("case_citation") or "").replace("\xa0", " ").strip()
+        mo = _NEUTRAL_CITATION.match(cit)
+        title, neutral = (mo.group(1), mo.group(2)) if mo and mo.group(1) else (cit, "")
+        rows.append({
+            **m,
+            "title": title,
+            "neutral": neutral,
+            "county": (m.get("court_station") or "").title(),
+            "decision_date": format_decision_date(m.get("judgment_date")),
+            "source_display": re.sub(r"^https?://", "", m.get("url_link") or ""),
+        })
+    return rows
+
+
+def contact_links(reference, topic):
+    """Email / WhatsApp / form targets for the 'quote this reference' lines."""
+    from urllib.parse import quote
+
+    msg = quote(f"Hello, I'd like to {topic} for certificate {reference}.")
+    wa = getattr(settings, "CERTIFICATE_WHATSAPP_URL", "https://wa.me/254733887188")
+    return {
+        "email": f"mailto:{getattr(settings, 'SUPPORT_EMAIL', '')}?subject={quote('Certificate ' + reference)}",
+        "whatsapp": f"{wa}{'&' if '?' in wa else '?'}text={msg}",
+        "form": getattr(settings, "CERTIFICATE_REQUEST_FORM_URL", ""),
+        "site": getattr(settings, "CERTIFICATE_SITE_URL", "https://legal.ke"),
+    }
+
+
+def pdf_filename(cert, searched, source):
+    """e.g. Ndungu_Report_Search_Certificate_2-267_No_Encumbrance.pdf"""
+    if source == "elc":
+        term, kind = searched, ("Litigation_Found" if cert["elc"]["found"] else "No_Record")
+        prefix = "Litigation_Search_Certificate"
+    else:
+        term = cert["overview"]["parcel"]
+        kind = "Encumbrance_Found" if cert["ndungu"]["found"] else "No_Encumbrance"
+        prefix = "Ndungu_Report_Search_Certificate"
+    safe = re.sub(r"[^A-Za-z0-9\-]", "", (term or "").strip().replace("/", "-").replace(" ", "")) or "Search"
+    return f"{prefix}_{safe}_{kind}.pdf"
+
+
+def build_pdf_context(cert, meta):
+    """Everything certificate.html needs beyond `cert` and `meta`."""
+    from pathlib import Path
+
+    source = cert.get("source", "ndungu")
+    ref = meta.get("certificate_reference", "")
+    ctx = {
+        "cert": cert, "meta": meta, "logo": _logo_data_uri(),
+        "qr": qr_data_uri(meta.get("verify_url", "")),
+        "font_dir": (Path(settings.BASE_DIR) / "ndungu" / "assets" / "fonts").as_uri(),
+    }
+    if source == "elc":
+        ctx["elc_rows"] = elc_rows(cert["elc"].get("matches", []))
+        ctx["links"] = contact_links(ref, "request a manual review")
+    elif cert["ndungu"]["found"]:
+        ctx["pages_ref"] = report_pages(cert["ndungu"]["tier_b_timeline"])
+        ctx["links"] = contact_links(ref, "request a copy of the relevant report page")
+    else:
+        ctx["links"] = contact_links(ref, "ask about this certificate")
+    return ctx
+
+
 def render_certificate_pdf(cert, meta):
     """Render a certificate to a standard, naturally-paginated A4 PDF.
 
-    Certificates now combine Ndung'u findings with ELC litigation and can run
-    long -- rather than force everything onto one custom-height page, content
-    flows across as many normal A4 pages as it needs (the template's own
-    @page rule already carries the repeating "Page X of Y" footer).
+    Content flows across as many normal A4 pages as it needs; the template's
+    own @page rule carries the repeating frame and "Page X of Y" footer.
     """
     from django.template.loader import render_to_string
     from weasyprint import HTML  # lazy import: native libs only needed here
 
-    # Verification QR the certificate carries; a scan opens the public verify page.
-    qr = qr_data_uri(meta.get("verify_url", ""))
-    html = render_to_string(
-        "ndungu/certificate.html",
-        {"cert": cert, "meta": meta, "qr": qr, "logo": _logo_data_uri()},
-    )
+    html = render_to_string("ndungu/certificate.html", build_pdf_context(cert, meta))
     return HTML(string=html).write_pdf()

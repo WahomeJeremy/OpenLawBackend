@@ -141,6 +141,9 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
+# The frontend reads the PDF's suggested filename from this header.
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -172,3 +175,8 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 
 # Legal.ke email notification
 SUPPORT_EMAIL = config('SUPPORT_EMAIL', default='support@legal.ke')
+
+# Contact points printed on certificates ("via Email, WhatsApp or this Form").
+CERTIFICATE_WHATSAPP_URL = config('CERTIFICATE_WHATSAPP_URL', default='https://wa.me/254733887188')
+CERTIFICATE_REQUEST_FORM_URL = config('CERTIFICATE_REQUEST_FORM_URL', default='https://legal.ke')
+CERTIFICATE_SITE_URL = config('CERTIFICATE_SITE_URL', default='https://legal.ke')

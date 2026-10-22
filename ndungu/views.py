@@ -20,6 +20,7 @@ from .services import (
     clean_source,
     log_search,
     now_eat,
+    pdf_filename,
     render_certificate_pdf,
     run_search,
     source_status,
@@ -145,7 +146,7 @@ class CertificatePDFView(APIView):
                 status=http_status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        filename = f"Landledger_Certificate_{ref}.pdf"
+        filename = pdf_filename(cert, searched_display, source)
         resp = HttpResponse(pdf, content_type="application/pdf")
         resp["Content-Disposition"] = f'attachment; filename="{filename}"'
         return resp
