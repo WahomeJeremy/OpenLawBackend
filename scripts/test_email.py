@@ -23,7 +23,7 @@ def test_email_configuration():
     # Test email sending
     try:
         send_mail(
-            subject="Test Email from OpenLaw Backend",
+            subject="Test Email from Landledger Backend",
             message="This is a test email to verify the email configuration is working.",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[settings.SUPPORT_EMAIL],

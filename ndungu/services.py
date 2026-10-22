@@ -496,6 +496,17 @@ def qr_data_uri(data):
     return "data:image/png;base64," + base64.b64encode(buff.getvalue()).decode()
 
 
+def _logo_data_uri():
+    """Landledger lockup for the certificate header ('' if the asset is missing)."""
+    import base64
+
+    path = settings.BASE_DIR / "ndungu" / "assets" / "landledger-logo.png"
+    try:
+        return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
+    except OSError:
+        return ""
+
+
 def render_certificate_pdf(cert, meta):
     """Render a certificate to a standard, naturally-paginated A4 PDF.
 
@@ -510,6 +521,7 @@ def render_certificate_pdf(cert, meta):
     # Verification QR the certificate carries; a scan opens the public verify page.
     qr = qr_data_uri(meta.get("verify_url", ""))
     html = render_to_string(
-        "ndungu/certificate.html", {"cert": cert, "meta": meta, "qr": qr}
+        "ndungu/certificate.html",
+        {"cert": cert, "meta": meta, "qr": qr, "logo": _logo_data_uri()},
     )
     return HTML(string=html).write_pdf()

@@ -1,10 +1,10 @@
-# OpenLaw Backend API
+# Landledger Backend API
 
 Land Due Diligence Platform (Kenya) - Backend API System
 
 ## Overview
 
-OpenLaw is a comprehensive land due diligence platform for Kenya that enables users to:
+Landledger is a comprehensive land due diligence platform for Kenya that enables users to:
 - Verify Kenyan land (via Title/Plot/Certificate/Allotment/LR Number)
 - View related court cases and case details
 - See number of disputes associated with land parcels
@@ -164,7 +164,7 @@ Certificates include:
 - Land details (title, LR, plot, certificate, allotment numbers)
 - Case information (if applicable)
 - Unique certificate ID
-- Official OpenLaw stamp
+- Official Landledger stamp
 - Generation timestamp
 
 ## Features
@@ -231,7 +231,7 @@ python manage.py collectstatic
 
 ## License
 
-This project is proprietary to OpenLaw Kenya.
+This project is proprietary to Landledger Kenya.
 
 ## Support
 

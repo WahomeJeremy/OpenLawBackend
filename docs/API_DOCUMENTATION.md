@@ -1,4 +1,4 @@
-# OpenLaw Backend API Documentation
+# Landledger Backend API Documentation
 ## Statement of Work (SOW) - Frontend Integration
 
 ### Table of Contents
@@ -657,4 +657,4 @@ ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
 
 ---
 
-*This documentation covers all current API endpoints and is intended for frontend development teams integrating with the OpenLaw Backend system.*
+*This documentation covers all current API endpoints and is intended for frontend development teams integrating with the Landledger Backend system.*

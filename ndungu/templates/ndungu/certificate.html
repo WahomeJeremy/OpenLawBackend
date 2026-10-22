@@ -5,7 +5,7 @@
 <title>{% if cert.source == 'elc' %}{% if cert.elc.found %}ELC Litigation{% else %}NIL-ELC Litigation{% endif %}{% elif cert.ndungu.found %}Encumbrance{% else %}NIL-Encumbrance{% endif %} Certificate — {{ meta.searched_parcel_id }}</title>
 <style>
   @page { size: A4; margin: 16mm 16mm 14mm 16mm;
-    @bottom-center { content: "Open Law — {% if cert.source == 'elc' %}ELC Litigation{% else %}Ndung'u Report Encumbrance{% endif %} Certificate  •  Ref " "{{ meta.certificate_reference }}"  "  •  Page " counter(page) " of " counter(pages);
+    @bottom-center { content: "Landledger — {% if cert.source == 'elc' %}ELC Litigation{% else %}Ndung'u Report Encumbrance{% endif %} Certificate  •  Ref " "{{ meta.certificate_reference }}"  "  •  Page " counter(page) " of " counter(pages);
       font-size: 8pt; color: #555; font-family: "Times New Roman", Times, serif;
       width: 60%; margin: 0 auto; padding-top: 6px; border-top: 1px solid #ccc; } }
   * { box-sizing: border-box; }
@@ -15,6 +15,7 @@
   .header { border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 4px; }
   .head-tbl { width: 100%; border-collapse: collapse; }
   .head-tbl td { border: none; vertical-align: top; padding: 0; }
+  .logo { height: 11mm; width: auto; display: block; margin-bottom: 5px; }
   .brand { text-transform: uppercase; font-size: 9pt; letter-spacing: 2px; }
   .title { font-size: 20pt; font-weight: 700; text-transform: uppercase;
     letter-spacing: .5px; margin-top: 3px; }
@@ -80,12 +81,14 @@
     <table class="head-tbl"><tr>
       <td>
         {% if cert.source == 'elc' %}
-        <div class="brand">Open Law &middot; ELC Litigation Search</div>
+        {% if logo %}<img class="logo" src="{{ logo }}" alt="Landledger">{% endif %}
+        <div class="brand">ELC Litigation Search</div>
         <div class="title">ELC Litigation Certificate</div>
         <div class="subtitle">Record of Environment and Land Court cases citing this parcel, from publicly filed judgments and rulings.</div>
         <div class="subtitle-fine">Reference information only &mdash; not an encumbrance finding, an official title deed or a Ministry of Lands search.</div>
         {% else %}
-        <div class="brand">Open Law &middot; Ndung'u Report Encumbrance Search</div>
+        {% if logo %}<img class="logo" src="{{ logo }}" alt="Landledger">{% endif %}
+        <div class="brand">Ndung'u Report Encumbrance Search</div>
         <div class="title">Land Encumbrance Certificate</div>
         <div class="subtitle">Historical due diligence record derived from the 2004 Ndung'u Report.</div>
         <div class="subtitle-fine">A decision support document, not an official title deed or a Ministry of Lands search.</div>

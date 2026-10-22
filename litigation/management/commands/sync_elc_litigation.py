@@ -39,7 +39,7 @@ class Command(BaseCommand):
     help = "Sync ELC litigation cases from the public Google Sheet CSV exports (both tabs)."
 
     def _fetch_rows(self, url):
-        req = urllib.request.Request(url, headers={"User-Agent": "OpenLaw-ELC-Sync/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Landledger-ELC-Sync/1.0"})
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode("utf-8")
         return list(csv.DictReader(io.StringIO(raw)))

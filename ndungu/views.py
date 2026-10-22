@@ -145,7 +145,7 @@ class CertificatePDFView(APIView):
                 status=http_status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        filename = f"OpenLaw_Certificate_{ref}.pdf"
+        filename = f"Landledger_Certificate_{ref}.pdf"
         resp = HttpResponse(pdf, content_type="application/pdf")
         resp["Content-Disposition"] = f'attachment; filename="{filename}"'
         return resp

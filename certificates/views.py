@@ -220,7 +220,7 @@ class CertificateDownloadView(generics.RetrieveAPIView):
             # Create better filename based on land title and certificate type
             land_title = certificate.land.title_number.replace('/', '_').replace(' ', '_')
             timestamp = certificate.generated_at.strftime('%Y%m%d_%H%M%S')
-            filename = f"OpenLaw_Certificate_{land_title}_{timestamp}.html"
+            filename = f"Landledger_Certificate_{land_title}_{timestamp}.html"
             
             # Return HTML content as downloadable file
             response = HttpResponse(content, content_type='text/html')
