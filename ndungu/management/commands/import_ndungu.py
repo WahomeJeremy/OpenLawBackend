@@ -159,7 +159,12 @@ class Command(BaseCommand):
         parcels = self._load_parcels()
         enrich = self._load_enrichment()
         self._load_findings(parcels, enrich)
-        self._load_entities()
+        # NOTE: _load_entities() is deliberately NOT called. aux_findings.csv
+        # (loaded above) already holds every row of the flagged_schools /
+        # entities / corporations / complaints / road_reserves / forest_excisions
+        # files in the lean schema, with richer reasons and source references.
+        # Loading them again doubled those 2,581 findings (20,320 vs the true
+        # 17,739) and inflated the count printed on NIL certificates.
 
     # ------------------------------------------------------------------ #
     def _load_parcels(self):
