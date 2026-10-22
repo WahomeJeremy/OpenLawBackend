@@ -2,125 +2,173 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>{% if cert.source == 'elc' %}{% if cert.elc.found %}ELC Litigation{% else %}NIL-ELC Litigation{% endif %}{% elif cert.ndungu.found %}Encumbrance{% else %}NIL-Encumbrance{% endif %} Certificate — {{ meta.searched_parcel_id }}</title>
+<title>{% if cert.source == 'elc' %}Property Litigation Search Certificate{% else %}Certificate of Search on the Ndung'u Report{% endif %} — {{ meta.searched_parcel_id }}</title>
 <style>
-  @page { size: A4; margin: 16mm 16mm 14mm 16mm;
-    @bottom-center { content: "Landledger — {% if cert.source == 'elc' %}ELC Litigation{% else %}Ndung'u Report Encumbrance{% endif %} Certificate  •  Ref " "{{ meta.certificate_reference }}"  "  •  Page " counter(page) " of " counter(pages);
-      font-size: 8pt; color: #555; font-family: "Times New Roman", Times, serif;
-      width: 60%; margin: 0 auto; padding-top: 6px; border-top: 1px solid #ccc; } }
+  /* Outfit is bundled so the PDF never depends on a network fetch; the stack
+     below is the fallback if the font can't be loaded on a given host. */
+  @font-face { font-family: "Outfit"; font-weight: 400; src: url("{{ font_dir }}/Outfit-Regular.ttf"); }
+  @font-face { font-family: "Outfit"; font-weight: 500; src: url("{{ font_dir }}/Outfit-Medium.ttf"); }
+  @font-face { font-family: "Outfit"; font-weight: 600; src: url("{{ font_dir }}/Outfit-SemiBold.ttf"); }
+  @font-face { font-family: "Outfit"; font-weight: 700; src: url("{{ font_dir }}/Outfit-Bold.ttf"); }
+
+  @page {
+    size: A4;
+    margin: 20mm 21mm 30mm 21mm;
+    background: #FDFCF8;
+    @bottom-left {
+      content: "{{ links.site|cut:'https://'|cut:'http://'|default:'legal.ke' }}";
+      width: 50%; vertical-align: top; margin-top: 5mm; padding-top: 3.5mm;
+      border-top: 0.35mm solid #1B2A4A;
+      font-family: "Outfit", "Helvetica Neue", Arial, sans-serif; font-size: 8.5pt; color: #4B5668;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      width: 50%; vertical-align: top; margin-top: 5mm; padding-top: 3.5mm; text-align: right;
+      border-top: 0.35mm solid #1B2A4A;
+      font-family: "Outfit", "Helvetica Neue", Arial, sans-serif; font-size: 8.5pt; color: #4B5668;
+    }
+  }
   * { box-sizing: border-box; }
-  body { font-family: "Times New Roman", Times, serif; color: #000;
-    font-size: 12pt; line-height: 1.45; margin: 0; }
+  body { margin: 0; font-family: "Outfit", "Helvetica Neue", Arial, sans-serif;
+    color: #1B2A4A; font-size: 10pt; line-height: 1.45; }
+  a { color: #1B3F7A; text-decoration: underline; }
 
-  .header { border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 4px; }
-  .head-tbl { width: 100%; border-collapse: collapse; }
-  .head-tbl td { border: none; vertical-align: top; padding: 0; }
-  .logo { height: 11mm; width: auto; display: block; margin-bottom: 5px; }
-  .brand { text-transform: uppercase; font-size: 9pt; letter-spacing: 2px; }
-  .title { font-size: 20pt; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .5px; margin-top: 3px; }
-  .subtitle { font-size: 10pt; margin-top: 3px; }
-  .subtitle-fine { font-size: 8.5pt; margin-top: 1px; }
-  .qr { width: 120px; text-align: center; }
-  .qr img { width: 96px; height: 96px; border: 1px solid #000; padding: 3px; }
-  .qr .cap { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
+  /* Double-line page frame, repeated on every page. */
+  .frame { position: fixed; top: -13mm; left: -13mm; right: -13mm; bottom: -22mm;
+    border: 1.2mm double #243A63; }
 
-  /* Meta line — borderless key/value pairs */
-  .meta { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  .meta td { border: none; padding: 2px 0; vertical-align: baseline; }
-  .meta .k { text-transform: uppercase; font-size: 8.5pt; letter-spacing: .5px; }
-  .meta .v { font-weight: 700; padding-right: 28px; }
+  /* ---- header ---- */
+  .top { width: 100%; border-collapse: collapse; }
+  .top td { vertical-align: top; padding: 0; }
+  .top .side { width: 30mm; }
+  .top .mid { text-align: center; }
+  .top .mid img { height: 13mm; width: auto; margin-top: 1mm; }
+  .top .qr { text-align: right; }
+  .top .qr img { width: 24mm; height: 24mm; display: block; margin-left: auto; }
+  .top .qr .cap { font-size: 7.5pt; letter-spacing: 0.6px; text-transform: uppercase;
+    color: #5A6578; margin-top: 2mm; }
 
-  /* Status — centered, no box */
-  .status { text-align: center; margin: 16px 0 4px; }
-  .status .t { font-size: 15pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-  .status .s { font-size: 10pt; margin-top: 3px; }
+  h1.title { margin: 9mm 0 0; text-align: center; font-weight: 500; font-size: 15.5pt;
+    letter-spacing: 0; text-transform: uppercase; color: #162E5A; }
+  .subtitle { margin: 2.2mm 0 0; text-align: center; font-size: 9pt; color: #5A6578; }
+  .rule { border: 0; border-top: 0.4mm solid #1B2A4A; margin: 6mm 0 6mm; }
 
-  h2.tier { font-size: 13pt; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
-    border-bottom: 1px solid #ccc; padding-bottom: 4px; margin: 18px 0 8px;
-    page-break-after: avoid; break-after: avoid; }
-  .nil-line { font-size: 10pt; font-style: italic; margin: 2px 0 4px; }
+  /* ---- meta row ---- */
+  table.meta { width: 100%; border-collapse: collapse; margin-bottom: 6mm; }
+  table.meta td { padding: 0 4mm 0 0; vertical-align: top; }
+  .meta .k { display: block; font-size: 8pt; letter-spacing: 0.7px; text-transform: uppercase; color: #5A6578; }
+  .meta .v { display: block; font-size: 10pt; margin-top: 1mm; color: #1B2A4A; }
+  .meta .v.strong { font-weight: 600; color: #0F1B33; }
 
-  /* Parcel summary — light two-column fields; the rule hugs each entry */
-  .fields { width: 100%; border-collapse: collapse; }
-  .fields td { width: 50%; vertical-align: top; padding: 5px 18px 8px 0; }
-  .field { display: block; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-  .fl { display: block; text-transform: uppercase; font-size: 9pt; letter-spacing: .3px; }
-  .fv { display: block; }
-  .fv.b { font-weight: 700; }
-
-  /* Timeline — light left rule, no box */
-  .event { border-left: 2px solid #000; padding: 2px 0 2px 12px; margin-bottom: 10px;
+  /* ---- status banner ---- */
+  table.banner { width: 100%; border-collapse: collapse; margin-bottom: 7mm;
     page-break-inside: avoid; break-inside: avoid; }
-  .event .cat { font-weight: 700; font-size: 11pt; }
-  .event .cite { font-size: 9pt; font-style: italic; margin-top: 2px; }
-  .event .row { margin-top: 3px; }
-  .event .lbl { font-weight: 700; }
-  .sale { border-top: 1px solid #ddd; padding-top: 5px; margin-top: 6px; font-size: 10pt; }
+  table.banner td { vertical-align: middle; padding: 5mm 6mm; }
+  table.banner.found  { background: #FCEEE5; border: 0.5mm solid #B24A1C; color: #8A3410; }
+  table.banner.none   { background: #EAF0FB; border: 0.5mm solid #1F4E96; color: #163A74; }
+  table.banner .ico { width: 17mm; padding-right: 0; }
+  table.banner .ico svg { width: 9mm; height: 9mm; }
+  table.banner .t { font-size: 16pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.2px; }
+  table.banner .s { font-size: 9.5pt; margin-top: 1mm; }
+  table.banner .eyebrow { font-size: 8pt; letter-spacing: 1.2px; text-transform: uppercase; }
+  table.banner .t.sentence { text-transform: none; font-size: 17pt; margin-top: 0.8mm; }
+  table.banner .count { width: 28mm; text-align: center; border-left: 0.3mm solid #C9A58F; }
+  table.banner.none .count { border-left-color: #8DA7D3; }
+  table.banner .count .n { font-size: 24pt; font-weight: 500; line-height: 1; }
+  table.banner .count .c { font-size: 8pt; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 1.5mm; }
 
-  .quote { border-left: 3px solid #000; padding: 2px 0 2px 12px; margin: 8px 0; font-style: italic; }
-  .quote .cite { font-size: 8.5pt; font-style: normal; display: block; margin-top: 3px; }
-  .legal { font-size: 12pt; font-weight: 700; border-left: 3px solid #000; padding: 2px 0 2px 12px; margin-top: 6px; }
-  .scope { font-size: 10pt; margin-top: 10px; }
-  /* LR-conversion reference data -- black-and-white, no border; never
-     colored, this is not an encumbrance finding. */
-  .conv-box { margin: 12px 0 16px; }
-  .conv-heading { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
-  .conv-lr { margin-top: 3px; }
-  .conv-match { margin-top: 8px; page-break-inside: avoid; break-inside: avoid; }
-  .conv-match-rule { border-top: 1px solid #ddd; padding-top: 8px; }
-  .conv-detail { font-size: 9pt; margin-top: 2px; }
+  /* ---- sections ---- */
+  h2.sec { margin: 0 0 2.5mm; font-size: 11pt; font-weight: 500; color: #162E5A; }
+  .section { margin-bottom: 6mm; }
+  .box { border: 0.3mm solid #8A94B0; padding: 3.5mm 4mm; background: #FDFCF8; }
+  .box.statement { font-weight: 500; color: #0F1B33; page-break-inside: avoid; break-inside: avoid; }
+  p.scope { margin: 3.5mm 0 0; font-size: 9.5pt; color: #4B5668; }
 
-  .verify-note { margin-top: 16px; font-size: 9pt; }
-  .disclaimer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #ddd;
-    font-size: 8.5pt; line-height: 1.4; }
+  table.fields { width: 100%; border-collapse: collapse; }
+  table.fields td { border: 0.3mm solid #8A94B0; padding: 2.5mm 3.5mm; vertical-align: top; width: 33.3%; }
+  .fl { display: block; font-size: 8pt; letter-spacing: 0.6px; text-transform: uppercase; color: #5A6578; }
+  .fv { display: block; margin-top: 0.8mm; font-size: 10pt; color: #1B2A4A; }
+  .fv.alert { color: #8A3410; font-weight: 500; text-transform: uppercase; }
+
+  .event { padding: 0 0 3mm; margin-bottom: 3mm; border-bottom: 0.2mm solid #D3D8E4;
+    page-break-inside: avoid; break-inside: avoid; }
+  .event:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+  .event .cat { font-size: 10.5pt; font-weight: 500; }
+  .event .cite { font-size: 9.5pt; color: #5A6578; margin: 0.6mm 0 1.6mm; }
+  .event .row { margin-top: 0.6mm; }
+  .sale { margin-top: 2mm; font-size: 9.5pt; color: #4B5668; }
+  .rec-action { font-weight: 500; }
+  .rec-action .alert { color: #8A3410; text-transform: uppercase; }
+  .quote { margin-top: 1.5mm; color: #1B2A4A; }
+  .quote .cite { display: block; font-size: 9.5pt; color: #5A6578; margin-top: 0.6mm; }
+
+  .callout { border-left: 1.1mm solid #1F4E96; background: #EAF0FB; padding: 3.5mm 4.5mm;
+    font-size: 9.8pt; color: #1B2A4A; margin: 0 0 6mm; page-break-inside: avoid; break-inside: avoid; }
+
+  /* ---- ELC schedule ---- */
+  table.cases { width: 100%; border-collapse: collapse; }
+  table.cases th { background: #EFF1F6; border: 0.3mm solid #8A94B0; padding: 2.2mm 3mm; text-align: left;
+    font-size: 8pt; font-weight: 400; letter-spacing: 0.8px; text-transform: uppercase; color: #4B5668; }
+  table.cases td { border: 0.3mm solid #8A94B0; padding: 3mm; vertical-align: top; font-size: 9.8pt; }
+  table.cases td.no { width: 12mm; }
+  table.cases td.small { width: 27mm; }
+  table.cases tbody { page-break-inside: avoid; break-inside: avoid; }
+  .neutral { color: #4B5668; }
+  .nil { border: 0.3mm solid #8A94B0; padding: 4mm; text-align: center; color: #4B5668; }
+
+  ol.disclaimer { margin: 0; padding-left: 4.5mm; font-size: 9pt; color: #4B5668; line-height: 1.5; }
+  ol.disclaimer li { margin-bottom: 1.6mm; padding-left: 1mm; }
+
+  /* ---- LR conversion reference ---- */
+  .conv-box { border: 0.3mm solid #8A94B0; padding: 3mm 4mm; margin-bottom: 6mm; font-size: 9.5pt;
+    page-break-inside: avoid; break-inside: avoid; }
+  .conv-heading { margin: 0 0 1mm; font-size: 8pt; letter-spacing: 0.7px; text-transform: uppercase; color: #5A6578; }
+  .conv-lr, .conv-detail, .conv-cite { margin: 0.6mm 0 0; }
+  .conv-detail, .conv-cite { color: #4B5668; font-size: 9pt; }
+  .conv-match-rule { border-top: 0.2mm solid #D3D8E4; margin-top: 2.5mm; padding-top: 2.5mm; }
 </style>
 </head>
 <body>
-  <div class="header">
-    <table class="head-tbl"><tr>
-      <td>
-        {% if cert.source == 'elc' %}
-        {% if logo %}<img class="logo" src="{{ logo }}" alt="Landledger">{% endif %}
-        <div class="brand">ELC Litigation Search</div>
-        <div class="title">ELC Litigation Certificate</div>
-        <div class="subtitle">Record of Environment and Land Court cases citing this parcel, from publicly filed judgments and rulings.</div>
-        <div class="subtitle-fine">Reference information only &mdash; not an encumbrance finding, an official title deed or a Ministry of Lands search.</div>
-        {% else %}
-        {% if logo %}<img class="logo" src="{{ logo }}" alt="Landledger">{% endif %}
-        <div class="brand">Ndung'u Report Encumbrance Search</div>
-        <div class="title">Land Encumbrance Certificate</div>
-        <div class="subtitle">Historical due diligence record derived from the 2004 Ndung'u Report.</div>
-        <div class="subtitle-fine">A decision support document, not an official title deed or a Ministry of Lands search.</div>
-        {% endif %}
-      </td>
-      <td class="qr">
-        <img src="{{ qr }}" alt="Scan to verify">
-        <div class="cap">Scan to verify</div>
-      </td>
-    </tr></table>
-  </div>
+  <div class="frame"></div>
 
-  <table class="meta">
-    <tr>
-      <td><span class="k">Searched</span> <span class="v">{{ meta.searched_parcel_id|default:"—" }}</span></td>
+  <table class="top"><tr>
+    <td class="side"></td>
+    <td class="mid">{% if logo %}<img src="{{ logo }}" alt="Landledger">{% endif %}</td>
+    <td class="side qr">
+      <img src="{{ qr }}" alt="Scan to verify">
+      <div class="cap">Scan to verify</div>
+    </td>
+  </tr></table>
+
+  {% if cert.source == 'elc' %}
+    <h1 class="title">Property Litigation Search Certificate</h1>
+    <p class="subtitle">A search of reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) for records relating to:</p>
+  {% else %}
+    <h1 class="title">Certificate of Search on the Ndung&rsquo;u Report</h1>
+    <p class="subtitle">A search of the Report of the Land Commission of Inquiry into the Illegal/Irregular Allocation of Land in Kenya</p>
+  {% endif %}
+  <hr class="rule">
+
+  <table class="meta"><tr>
+    {% if cert.source == 'elc' %}
+      <td><span class="k">Search reference</span><span class="v strong">{{ meta.searched_parcel_id|default:"—" }}</span></td>
+      <td><span class="k">Certificate reference</span><span class="v">{{ meta.certificate_reference }}</span></td>
+      <td><span class="k">Date of search</span><span class="v">{{ meta.generated_display }}</span></td>
+    {% else %}
+      <td><span class="k">Searched</span><span class="v strong">{{ meta.searched_parcel_id|default:"—" }}</span></td>
       {% if meta.matched_parcel_id %}
-        <td><span class="k">Matched</span> <span class="v">{{ meta.matched_parcel_id }}</span></td>
-      {% else %}
-        <td></td>
+        <td><span class="k">Matched</span><span class="v strong">{{ meta.matched_parcel_id }}</span></td>
       {% endif %}
-    </tr>
-    <tr>
-      <td><span class="k">Reference</span> <span class="v">{{ meta.certificate_reference }}</span></td>
-      <td><span class="k">Generated</span> <span class="v">{{ meta.generated_display }}</span></td>
-    </tr>
-  </table>
+      <td><span class="k">Reference</span><span class="v">{{ meta.certificate_reference }}</span></td>
+      <td><span class="k">Generated</span><span class="v">{{ meta.generated_display }}</span></td>
+    {% endif %}
+  </tr></table>
 
   {% if cert.conversion_info %}
     <div class="conv-box">
       {% for m in cert.conversion_info.matches %}
-        <div class="conv-match{% if not forloop.first %} conv-match-rule{% endif %}">
-          <p class="conv-heading">LR Number Conversion &mdash; Reference Data</p>
+        <div class="{% if not forloop.first %}conv-match-rule{% endif %}">
+          <p class="conv-heading">LR number conversion &mdash; reference data</p>
           <p class="conv-lr"><strong>{{ m.old_lr_no }}</strong> &rarr; <strong>{{ m.new_lr_number }}</strong></p>
           <p class="conv-detail">
             {% if m.scheme_name %}Scheme: {{ m.scheme_name }}{% endif %}
@@ -128,7 +176,7 @@
             {% if m.registration_unit %} &middot; Unit: {{ m.registration_unit }}{% endif %}
           </p>
           {% if m.citations %}
-            <p class="conv-detail">Gazetted:
+            <p class="conv-cite">
               {% for c in m.citations %}{% if not forloop.first %}; {% endif %}{{ c.gazette_vol_no }} ({{ c.gazette_date }}){% endfor %}
             </p>
           {% endif %}
@@ -137,90 +185,150 @@
     </div>
   {% endif %}
 
-    {% if cert.source == 'elc' %}
-    <div class="status">
-      {% if cert.elc.found %}
-        <div class="t">ELC Litigation Found</div>
-        <div class="s">{{ cert.elc.matches|length }} {{ cert.elc.matches|length|pluralize:"case,cases" }} found</div>
-      {% else %}
-        <div class="t">No ELC Litigation Recorded</div>
-      {% endif %}
-    </div>
-
+  {% if cert.source == 'elc' %}
+  {# ===================== Property litigation (ELC) ===================== #}
     {% if cert.elc.found %}
-      <h2 class="tier">1. ELC Litigation Cases</h2>
-      {% for m in cert.elc.matches %}
-        <div class="event">
-          <div class="cat">{{ forloop.counter }}. {{ m.case_citation }}</div>
-          <div class="cite">{{ m.action|default:"—" }}{% if m.judgment_date %} &middot; {{ m.judgment_date }}{% endif %}{% if m.court_station %} &middot; {{ m.court_station }}{% endif %}</div>
-          {% if m.parties %}<div class="row"><span class="lbl">Parties:</span> {{ m.parties }}</div>{% endif %}
-          {% if m.outcome_status %}<div class="row"><span class="lbl">Outcome:</span> {{ m.outcome_status }}</div>{% endif %}
-          {% if m.url_link %}<div class="row"><span class="lbl">Source:</span> {{ m.url_link }}</div>{% endif %}
-        </div>
-      {% endfor %}
-      {% if cert.elc.disclaimer %}<p class="scope">{{ cert.elc.disclaimer }}</p>{% endif %}
+      <table class="banner found"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
+        <td>
+          <div class="eyebrow">Search result</div>
+          <div class="t sentence">Litigation found</div>
+          <div class="s">This property is named in Environment and Land Court proceedings on record.</div>
+        </td>
+        <td class="count"><div class="n">{{ cert.elc.matches|length }}</div><div class="c">{{ cert.elc.matches|length|pluralize:"Case,Cases" }}</div></td>
+      </tr></table>
+
+      <div class="section">
+        <h2 class="sec">Schedule of cases</h2>
+        <table class="cases">
+          <thead><tr><th>No.</th><th>Case and citation</th><th>County</th><th>Decision</th><th>Outcome</th></tr></thead>
+          {% for m in elc_rows %}
+          <tbody>
+            <tr>
+              <td class="no">{{ forloop.counter }}</td>
+              <td>{{ m.title }}{% if m.neutral %}<br><span class="neutral">{{ m.neutral }}</span>{% endif %}</td>
+              <td class="small">{{ m.county|default:"—" }}</td>
+              <td class="small">{{ m.action|default:"—" }}{% if m.decision_date %}<br>{{ m.decision_date }}{% endif %}</td>
+              <td class="small">{{ m.outcome_status|default:"—" }}</td>
+            </tr>
+            {% if m.parties or m.url_link %}
+            <tr class="detail">
+              <td></td>
+              <td colspan="4">
+                {% if m.parties %}<div>Parties: {{ m.parties }}</div>{% endif %}
+                {% if m.url_link %}<div>Source: <a href="{{ m.url_link }}">{{ m.source_display }}</a></div>{% endif %}
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+          {% endfor %}
+        </table>
+      </div>
     {% else %}
-      <h2 class="tier">ELC Litigation</h2>
-      <p class="legal">{{ cert.elc.nil_statement }}</p>
+      <table class="banner none"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M7.5 10.5h6"/></svg></td>
+        <td>
+          <div class="eyebrow">Search result</div>
+          <div class="t sentence">No litigation record found</div>
+          <div class="s">No Environment and Land Court case in the searched records names this property.<br>To confirm, apply for a manual review (disclaimer point 2).</div>
+        </td>
+        <td class="count"><div class="n">0</div><div class="c">Cases</div></td>
+      </tr></table>
+
+      <div class="section">
+        <h2 class="sec">Schedule of cases</h2>
+        <div class="nil">Nil &mdash; no case recorded against this property in the searched records.</div>
+      </div>
     {% endif %}
 
-    {% else %}
-    <div class="status">
-      {% if cert.ndungu.found %}
-        <div class="t">Encumbrance Found</div>
-        <div class="s">{{ cert.ndungu.tier_b_timeline|length }} {{ cert.ndungu.tier_b_timeline|length|pluralize:"entry,entries" }} found</div>
-      {% else %}
-        <div class="t">No Encumbrance Recorded</div>
-      {% endif %}
+    <div class="section">
+      <h2 class="sec">Disclaimer</h2>
+      <ol class="disclaimer">
+        <li>Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd as of {{ meta.generated_display }}.</li>
+        <li>If no record is returned, consider requesting a manual review by quoting {{ meta.certificate_reference }} via <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.</li>
+        <li>This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
+      </ol>
     </div>
 
+  {% else %}
+  {# ========================= Ndung'u Report ============================ #}
     {% if cert.ndungu.found %}
-      <h2 class="tier">1. Parcel Summary</h2>
-      <table class="fields">
-        <tr>
-          <td><span class="field"><span class="fl">Location</span><span class="fv">{{ cert.ndungu.tier_a_summary.location|default:"—" }}</span></span></td>
-          <td><span class="field"><span class="fl">Reserved Purpose</span><span class="fv">{{ cert.ndungu.tier_a_summary.reserved_purpose|default:"—" }}</span></span></td>
-        </tr>
-        <tr>
-          <td><span class="field"><span class="fl">Area (Ha)</span><span class="fv">{{ cert.ndungu.tier_a_summary.area_hectares|default:"—" }}</span></span></td>
-          <td><span class="field"><span class="fl">Current Owner</span><span class="fv">{{ cert.ndungu.tier_a_summary.current_owner|default:"—" }}</span></span></td>
-        </tr>
-        <tr>
-          <td><span class="field"><span class="fl">Commission Recommendation</span><span class="fv b">{{ cert.ndungu.tier_a_summary.commission_recommendation|default:"—" }}</span></span></td>
-          <td></td>
-        </tr>
-      </table>
+      <table class="banner found"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
+        <td>
+          <div class="t">Encumbrance found</div>
+          <div class="s">{{ cert.ndungu.tier_b_timeline|length }} {{ cert.ndungu.tier_b_timeline|length|pluralize:"entry,entries" }} found</div>
+        </td>
+      </tr></table>
 
-      <h2 class="tier">2. Encumbrance Timeline</h2>
-      {% for e in cert.ndungu.tier_b_timeline %}
-        <div class="event">
-          <div class="cat">{{ forloop.counter }}. {{ e.flag_category|underscore_to_title }}</div>
-          <div class="cite">{{ e.citation }}</div>
-          {% if e.reserved_use %}<div class="row"><span class="lbl">Reserved use:</span> {{ e.reserved_use }}</div>{% endif %}
-          {% if e.prior_party %}<div class="row"><span class="lbl">Prior party:</span> {{ e.prior_party }}</div>{% endif %}
-          {% if e.current_holder %}<div class="row"><span class="lbl">Holder:</span> {{ e.current_holder }}</div>{% endif %}
-          {% if e.flag_reason %}<div class="row">{{ e.flag_reason }}</div>{% endif %}
-          {% if e.onward_sale %}
-            <div class="sale"><strong>Onward sale</strong> —
-              Vendor: {{ e.onward_sale.vendor|default:"—" }} ·
-              Buyer: {{ e.onward_sale.buyer|default:"—" }} ·
-              Price: Ksh {{ e.onward_sale.price_kshs|default:"—" }} ·
-              Date: {{ e.onward_sale.date|default:"—" }}</div>
-          {% endif %}
+      <div class="section">
+        <h2 class="sec">1. Parcel summary</h2>
+        <table class="fields">
+          <tr>
+            <td><span class="fl">Location</span><span class="fv">{{ cert.ndungu.tier_a_summary.location|default:"—" }}</span></td>
+            <td><span class="fl">Reserved purpose</span><span class="fv">{{ cert.ndungu.tier_a_summary.reserved_purpose|default:"—" }}</span></td>
+            <td><span class="fl">Area (Ha)</span><span class="fv">{{ cert.ndungu.tier_a_summary.area_hectares|default:"—" }}</span></td>
+          </tr>
+          <tr>
+            <td><span class="fl">Current owner</span><span class="fv">{{ cert.ndungu.tier_a_summary.current_owner|default:"—" }}</span></td>
+            <td colspan="2"><span class="fl">Commission recommendation</span><span class="fv alert">{{ cert.ndungu.tier_a_summary.commission_recommendation|default:"—" }}</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2 class="sec">2. Encumbrance timeline</h2>
+        <div class="box">
+          {% for e in cert.ndungu.tier_b_timeline %}
+            <div class="event">
+              <div class="cat">{{ forloop.counter }}. {{ e.flag_category|underscore_to_title }}</div>
+              <div class="cite">{{ e.citation }}</div>
+              {% if e.reserved_use %}<div class="row">Reserved use: {{ e.reserved_use }}</div>{% endif %}
+              {% if e.prior_party %}<div class="row">Prior party: {{ e.prior_party }}</div>{% endif %}
+              {% if e.current_holder %}<div class="row">Holder: {{ e.current_holder }}</div>{% endif %}
+              {% if e.flag_reason %}<div class="row">{{ e.flag_reason }}</div>{% endif %}
+              {% if e.onward_sale %}
+                <div class="sale">Vendor: {{ e.onward_sale.vendor|default:"—" }} &middot;
+                  Buyer: {{ e.onward_sale.buyer|default:"—" }} &middot;
+                  Price: Ksh {{ e.onward_sale.price_kshs|default:"—" }} &middot;
+                  Date: {{ e.onward_sale.date|default:"—" }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+      </div>
 
-      <h2 class="tier">3. Commission Recommendation</h2>
-      <p><strong>Action: {{ cert.ndungu.tier_c_recommendation.action|default:"—" }}</strong></p>
-      {% for q in cert.ndungu.tier_c_recommendation.raw_quotes %}
-        <div class="quote">“{{ q.quote }}”<span class="cite">{{ q.citation }}</span></div>
-      {% endfor %}
+      <div class="section">
+        <h2 class="sec">3. Commission recommendation</h2>
+        <div class="box">
+          <div class="rec-action">Action: <span class="alert">{{ cert.ndungu.tier_c_recommendation.action|default:"—" }}</span></div>
+          {% for q in cert.ndungu.tier_c_recommendation.raw_quotes %}
+            <div class="quote">&ldquo;{{ q.quote }}&rdquo;<span class="cite">{{ q.citation }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="callout">
+        Request a copy of the relevant page of the report{% if pages_ref %} ({{ pages_ref }}){% endif %} by quoting {{ meta.certificate_reference }} via
+        <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.
+      </div>
     {% else %}
-      <h2 class="tier">Ndung'u Report</h2>
-      <p class="legal">{{ cert.ndungu.legal_statement }}</p>
-      <p class="scope">{{ cert.ndungu.search_scope }}</p>
-    {% endif %}
-    {% endif %}
+      <table class="banner none"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M7.5 10.5h6"/></svg></td>
+        <td><div class="t">No encumbrance recorded</div></td>
+      </tr></table>
 
+      <div class="section">
+        <h2 class="sec">Ndung&rsquo;u Report</h2>
+        <div class="box statement">{{ cert.ndungu.legal_statement }}</div>
+        <p class="scope">{{ cert.ndungu.search_scope }}</p>
+      </div>
+
+      <div class="callout">
+        Check whether there is any reported court decision in respect of this property by running a
+        <a href="{{ links.site }}">Property Litigation Search</a> at {{ links.site|cut:"https://"|cut:"http://" }}.
+      </div>
+    {% endif %}
+  {% endif %}
 </body>
 </html>
