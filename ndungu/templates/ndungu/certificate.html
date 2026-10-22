@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>{% if cert.ndungu.found %}Encumbrance{% else %}NIL-Encumbrance{% endif %} Certificate — {{ meta.searched_parcel_id }}</title>
+<title>{% if cert.source == 'elc' %}{% if cert.elc.found %}ELC Litigation{% else %}NIL-ELC Litigation{% endif %}{% elif cert.ndungu.found %}Encumbrance{% else %}NIL-Encumbrance{% endif %} Certificate — {{ meta.searched_parcel_id }}</title>
 <style>
   @page { size: A4; margin: 16mm 16mm 14mm 16mm;
-    @bottom-center { content: "Open Law — Ndung'u Report Encumbrance Certificate  •  Ref " "{{ meta.certificate_reference }}"  "  •  Page " counter(page) " of " counter(pages);
+    @bottom-center { content: "Open Law — {% if cert.source == 'elc' %}ELC Litigation{% else %}Ndung'u Report Encumbrance{% endif %} Certificate  •  Ref " "{{ meta.certificate_reference }}"  "  •  Page " counter(page) " of " counter(pages);
       font-size: 8pt; color: #555; font-family: "Times New Roman", Times, serif;
       width: 60%; margin: 0 auto; padding-top: 6px; border-top: 1px solid #ccc; } }
   * { box-sizing: border-box; }
@@ -79,10 +79,17 @@
   <div class="header">
     <table class="head-tbl"><tr>
       <td>
+        {% if cert.source == 'elc' %}
+        <div class="brand">Open Law &middot; ELC Litigation Search</div>
+        <div class="title">ELC Litigation Certificate</div>
+        <div class="subtitle">Record of Environment and Land Court cases citing this parcel, from publicly filed judgments and rulings.</div>
+        <div class="subtitle-fine">Reference information only &mdash; not an encumbrance finding, an official title deed or a Ministry of Lands search.</div>
+        {% else %}
         <div class="brand">Open Law &middot; Ndung'u Report Encumbrance Search</div>
         <div class="title">Land Encumbrance Certificate</div>
         <div class="subtitle">Historical due diligence record derived from the 2004 Ndung'u Report.</div>
         <div class="subtitle-fine">A decision support document, not an official title deed or a Ministry of Lands search.</div>
+        {% endif %}
       </td>
       <td class="qr">
         <img src="{{ qr }}" alt="Scan to verify">
@@ -127,6 +134,34 @@
     </div>
   {% endif %}
 
+    {% if cert.source == 'elc' %}
+    <div class="status">
+      {% if cert.elc.found %}
+        <div class="t">ELC Litigation Found</div>
+        <div class="s">{{ cert.elc.matches|length }} {{ cert.elc.matches|length|pluralize:"case,cases" }} found</div>
+      {% else %}
+        <div class="t">No ELC Litigation Recorded</div>
+      {% endif %}
+    </div>
+
+    {% if cert.elc.found %}
+      <h2 class="tier">1. ELC Litigation Cases</h2>
+      {% for m in cert.elc.matches %}
+        <div class="event">
+          <div class="cat">{{ forloop.counter }}. {{ m.case_citation }}</div>
+          <div class="cite">{{ m.action|default:"—" }}{% if m.judgment_date %} &middot; {{ m.judgment_date }}{% endif %}{% if m.court_station %} &middot; {{ m.court_station }}{% endif %}</div>
+          {% if m.parties %}<div class="row"><span class="lbl">Parties:</span> {{ m.parties }}</div>{% endif %}
+          {% if m.outcome_status %}<div class="row"><span class="lbl">Outcome:</span> {{ m.outcome_status }}</div>{% endif %}
+          {% if m.url_link %}<div class="row"><span class="lbl">Source:</span> {{ m.url_link }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      {% if cert.elc.disclaimer %}<p class="scope">{{ cert.elc.disclaimer }}</p>{% endif %}
+    {% else %}
+      <h2 class="tier">ELC Litigation</h2>
+      <p class="legal">{{ cert.elc.nil_statement }}</p>
+    {% endif %}
+
+    {% else %}
     <div class="status">
       {% if cert.ndungu.found %}
         <div class="t">Encumbrance Found</div>
@@ -181,6 +216,7 @@
       <h2 class="tier">Ndung'u Report</h2>
       <p class="legal">{{ cert.ndungu.legal_statement }}</p>
       <p class="scope">{{ cert.ndungu.search_scope }}</p>
+    {% endif %}
     {% endif %}
 
 </body>

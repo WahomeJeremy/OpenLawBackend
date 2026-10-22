@@ -241,3 +241,96 @@ class SearchAPITests(TestCase):
             data={"parcel_id": "209/11642"}, content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res["Content-Type"], "application/pdf")
+
+
+class SourceAwareTests(TestCase):
+    """The certificate is exclusively about the dataset the user picked."""
+
+    def setUp(self):
+        from litigation.models import ElcCase, ElcCaseIdentifier
+
+        self.p = make_parcel("209/11642", display="209/11642")
+        make_finding(self.p, "r1")
+        case = ElcCase.objects.create(
+            case_citation="ELC Case 7 of 2019", court_station="Nairobi",
+            judgment_date="2020-01-02", action="Judgement", parties="A v B",
+            outcome_status="Allowed",
+        )
+        ElcCaseIdentifier.objects.create(
+            case=case, raw_identifier="209/11642",
+            normalized_identifier=services.normalize_parcel_id("209/11642"),
+        )
+        # A parcel with ELC litigation only (no Ndung'u record).
+        ElcCaseIdentifier.objects.create(
+            case=case, raw_identifier="55/1", normalized_identifier=services.normalize_parcel_id("55/1"),
+        )
+
+    def _search(self, q, **extra):
+        return self.client.get("/api/ndungu/search/", {"q": q, **extra})
+
+    def test_source_defaults_to_ndungu_and_unknown_falls_back(self):
+        for extra in ({}, {"source": "bogus"}):
+            ref = self._search("209/11642", **extra).json()["metadata"]["certificate_reference"]
+            self.assertEqual(CertificateLog.objects.get(certificate_reference=ref).dataset_source, "ndungu")
+
+    def test_elc_pick_is_logged_with_elc_status(self):
+        # ELC-only parcel: found in ELC, not in Ndung'u.
+        ref = self._search("55/1", source="elc").json()["metadata"]["certificate_reference"]
+        log = CertificateLog.objects.get(certificate_reference=ref)
+        self.assertEqual((log.dataset_source, log.status), ("elc", "encumbrance_found"))
+
+    def test_status_is_per_dataset_not_combined(self):
+        # Same ELC-only parcel viewed as Ndung'u: the combined verdict is still
+        # "found" (via ELC) but the Ndung'u certificate itself records none.
+        data = self._search("55/1", source="ndungu").json()
+        self.assertEqual(data["status"], "encumbrance_found")
+        log = CertificateLog.objects.get(certificate_reference=data["metadata"]["certificate_reference"])
+        self.assertEqual(log.status, "no_encumbrance")
+
+    def test_verify_reports_dataset_source(self):
+        ref = self._search("55/1", source="elc").json()["metadata"]["certificate_reference"]
+        v = self.client.get(f"/api/ndungu/verify/{ref}/").json()
+        self.assertEqual((v["dataset_source"], v["status"]), ("elc", "encumbrance_found"))
+
+    def test_elc_section_carries_the_disclaimer(self):
+        elc = self._search("209/11642").json()["elc"]
+        self.assertTrue(elc["found"])
+        self.assertIn("reference", elc["disclaimer"])
+
+    @patch("ndungu.views.render_certificate_pdf", return_value=b"%PDF-1.7 test")
+    def test_pdf_endpoint_passes_the_source_through(self, mock_render):
+        self.client.post("/api/ndungu/certificate/",
+                         data={"parcel_id": "55/1", "source": "elc"}, content_type="application/json")
+        cert = mock_render.call_args[0][0]
+        self.assertEqual(cert["source"], "elc")
+        self.client.post("/api/ndungu/certificate/",
+                         data={"parcel_id": "55/1"}, content_type="application/json")
+        self.assertEqual(mock_render.call_args[0][0]["source"], "ndungu")
+
+    def _html(self, q, source):
+        from django.template.loader import render_to_string
+        from ndungu.services import build_combined_certificate
+        from litigation.services import find_litigation
+
+        parcel = Parcel.objects.filter(parcel_id_clean=q).first()
+        cert = build_combined_certificate(parcel, find_litigation(q), q)
+        cert["source"] = source
+        meta = {"searched_parcel_id": q, "certificate_reference": "REF-1"}
+        return render_to_string("ndungu/certificate.html", {"cert": cert, "meta": meta, "qr": ""})
+
+    def test_elc_pdf_template_shows_cases_not_ndungu_sections(self):
+        html = self._html("209/11642", "elc")
+        self.assertIn("ELC Litigation Certificate", html)
+        self.assertIn("ELC Case 7 of 2019", html)
+        self.assertNotIn("Parcel Summary", html)
+
+    def test_ndungu_pdf_template_is_unchanged_and_omits_elc(self):
+        html = self._html("209/11642", "ndungu")
+        self.assertIn("Land Encumbrance Certificate", html)
+        self.assertIn("Parcel Summary", html)
+        self.assertNotIn("ELC Case 7 of 2019", html)
+
+    def test_elc_pdf_nil_statement(self):
+        html = self._html("77/7", "elc")
+        self.assertIn("No ELC Litigation Recorded", html)
+        self.assertIn("No ELC litigation case recorded against parcel 77/7", html)

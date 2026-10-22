@@ -119,6 +119,12 @@ class CertificateLog(models.Model):
     normalized_query = models.CharField(max_length=255, blank=True)
     results_count = models.IntegerField(default=0)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES)
+    # Which dataset the certificate was actually about (the dropdown pick). The
+    # verify page words its status per dataset, so the ledger has to remember it.
+    dataset_source = models.CharField(
+        max_length=10, choices=[("ndungu", "Ndung'u Report"), ("elc", "ELC Litigation")],
+        default="ndungu",
+    )
     matched_parcel = models.ForeignKey(
         Parcel, on_delete=models.SET_NULL, null=True, blank=True,
         related_name="certificate_logs",

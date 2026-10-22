@@ -402,7 +402,8 @@ def build_combined_certificate(parcel, litigation_info, shown_id):
         }
 
     elc_section = (
-        {"found": True, "matches": litigation_info["matches"]} if elc_found else
+        {"found": True, "matches": litigation_info["matches"],
+         "disclaimer": litigation_info["disclaimer"]} if elc_found else
         {"found": False, "nil_statement": elc_nil_statement(overview_parcel)}
     )
 
@@ -441,7 +442,25 @@ def build_nil_certificate(searched_id):
 # --------------------------------------------------------------------------- #
 #  Audit ledger
 # --------------------------------------------------------------------------- #
-def log_search(searched_id, normalized, results_count, status, parcel=None):
+DATASET_SOURCES = ("ndungu", "elc")
+
+
+def clean_source(raw):
+    """Normalise the client's dataset pick; anything unknown means Ndung'u."""
+    raw = (raw or "").strip().lower()
+    return raw if raw in DATASET_SOURCES else "ndungu"
+
+
+def source_status(combined, source):
+    """Verdict for ONE dataset. The combined payload's `status` is Ndung'u OR
+    ELC; a certificate that is exclusively about one dataset must not be
+    reported 'found' because of the other."""
+    found = combined["elc" if source == "elc" else "ndungu"]["found"]
+    return "encumbrance_found" if found else "no_encumbrance"
+
+
+def log_search(searched_id, normalized, results_count, status, parcel=None,
+               dataset_source="ndungu"):
     """Write the immutable ledger entry and return its certificate reference."""
     ref = generate_reference()
     CertificateLog.objects.create(
@@ -450,6 +469,7 @@ def log_search(searched_id, normalized, results_count, status, parcel=None):
         normalized_query=normalized,
         results_count=results_count,
         status=status,
+        dataset_source=dataset_source,
         matched_parcel=parcel,
     )
     return ref

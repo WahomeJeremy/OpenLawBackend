@@ -17,10 +17,12 @@ from .models import CertificateLog, Parcel, normalize_parcel_id
 from .services import (
     _parcels_by_alternate_id,
     build_combined_certificate,
+    clean_source,
     log_search,
     now_eat,
     render_certificate_pdf,
     run_search,
+    source_status,
     suggestion_payload,
     verify_url,
 )
@@ -52,6 +54,7 @@ class SearchView(APIView):
             )
 
         normalized = normalize_parcel_id(q)
+        source = clean_source(request.query_params.get("source"))
         result = run_search(q)
         # LR-conversion stays pure reference data, independent of the verdict.
         # ELC litigation now DOES factor into the verdict, alongside Ndung'u --
@@ -60,7 +63,8 @@ class SearchView(APIView):
         litigation_info = find_litigation(q)
 
         if result["match_type"] in ("suggestions", "multiple"):
-            ref = log_search(q, normalized, len(result["parcels"]), "suggestions")
+            ref = log_search(q, normalized, len(result["parcels"]), "suggestions",
+                             dataset_source=source)
             payload = {
                 "status": "suggestions",
                 "metadata": _metadata(request, q, ref),
@@ -81,7 +85,8 @@ class SearchView(APIView):
 
         shown = combined["overview"]["parcel"]
         count = parcel.findings.count() if parcel else 0
-        ref = log_search(shown, normalized, count, combined["status"], parcel)
+        ref = log_search(shown, normalized, count, source_status(combined, source),
+                         parcel, dataset_source=source)
         combined["metadata"] = _metadata(request, shown, ref)
         if conversion_info:
             combined["conversion_info"] = conversion_info
@@ -111,11 +116,14 @@ class CertificatePDFView(APIView):
             if len(alt) == 1:
                 parcel = alt[0]
 
+        source = clean_source(data.get("source"))
         litigation_info = find_litigation(q)
         cert = build_combined_certificate(parcel, litigation_info, q)
+        cert["source"] = source  # the PDF is about this one dataset only
         shown = cert["overview"]["parcel"]
         count = parcel.findings.count() if parcel else 0
-        ref = log_search(shown, normalized, count, cert["status"], parcel)
+        ref = log_search(shown, normalized, count, source_status(cert, source),
+                         parcel, dataset_source=source)
 
         # "Searched" is what the user typed; "Matched" is the record we resolved
         # to. Only carry Matched when it isn't a 1-to-1 match (e.g. name search).
@@ -162,5 +170,6 @@ class VerifyView(APIView):
             "searched_parcel_id": log.searched_parcel_id,
             "results_count": log.results_count,
             "status": log.status,
+            "dataset_source": log.dataset_source,
             "timestamp": log.created_at.isoformat(),
         })
