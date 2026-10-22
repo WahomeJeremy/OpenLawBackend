@@ -521,31 +521,6 @@ def report_pages(timeline):
 _NEUTRAL_CITATION = re.compile(r"^(.*?)\s*(\[\d{4}\].*)$", re.S)
 
 
-_MONTHS = ("January February March April May June July August "
-           "September October November December").split()
-
-
-def format_decision_date(raw):
-    """Tidy the sheet's free-text judgment date to '19 February 2026'.
-
-    Most cells already read '19 February 2026'. A few are 'M/D/YYYY'; those are
-    only converted when one half is >12 (so the order is unambiguous) -- an
-    ambiguous '3/4/2026' is left exactly as entered rather than guessed. A cell
-    that holds a URL (the sheet has a few shifted columns) is blanked.
-    """
-    raw = re.sub(r"\s+", " ", (raw or "").replace("\xa0", " ")).strip()
-    if raw.lower().startswith("http"):
-        return ""
-    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
-    if m:
-        a, b, year = int(m[1]), int(m[2]), m[3]
-        if b > 12 >= a:
-            return f"{b} {_MONTHS[a - 1]} {year}"
-        if a > 12 >= b:
-            return f"{a} {_MONTHS[b - 1]} {year}"
-    return raw
-
-
 def elc_rows(matches):
     """ELC matches prepared for the schedule table: the case title and its
     neutral citation ('[2015] KEELC 728 (KLR)') on separate lines."""
@@ -558,8 +533,8 @@ def elc_rows(matches):
             **m,
             "title": title,
             "neutral": neutral,
-            "county": (m.get("court_station") or "").title(),
-            "decision_date": format_decision_date(m.get("judgment_date")),
+            "county": m.get("county") or (m.get("court_station") or "").title(),
+            "decision_date": m.get("judgment_date", ""),  # already tidied by litigation.services
             "source_display": re.sub(r"^https?://", "", m.get("url_link") or ""),
         })
     return rows

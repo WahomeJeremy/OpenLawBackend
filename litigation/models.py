@@ -14,6 +14,9 @@ class ElcCase(models.Model):
     case_citation = models.CharField(max_length=500, unique=True, db_index=True)
     url_link = models.URLField(max_length=500, blank=True)
     court_station = models.CharField(max_length=255, blank=True)
+    # Which sheet tab the case was synced from (tab 1 = Nairobi, tab 2 = Kajiado);
+    # the sheet's own Court Station column is almost always blank.
+    county = models.CharField(max_length=50, blank=True)
     judgment_date = models.CharField(max_length=100, blank=True)  # raw text; formats vary in the sheet
     action = models.CharField(max_length=50, blank=True)  # Judgement / Ruling
     parties = models.TextField(blank=True)

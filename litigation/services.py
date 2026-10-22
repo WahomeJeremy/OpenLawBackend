@@ -25,6 +25,8 @@ SHEET_EXPORT_URLS = [
     _GVIZ_URL + "Form%20Responses%201",
     _GVIZ_URL + "Form%20Responses%202",
 ]
+# County each tab covers, in the same order as SHEET_EXPORT_URLS.
+SHEET_COUNTIES = ["Nairobi", "Kajiado"]
 
 _LABEL_PREFIX = re.compile(
     r"^\s*(?:"
@@ -73,12 +75,40 @@ def split_identifiers(raw_cell):
     return out
 
 
-def _citation_payload(case):
+_MONTHS = ("January February March April May June July August "
+           "September October November December").split()
+
+
+def format_decision_date(raw):
+    """Tidy the sheet's free-text judgment date to '19 February 2026'.
+
+    Most cells already read '19 February 2026'. A few are 'M/D/YYYY'; those are
+    only converted when one half is >12 (so the order is unambiguous) -- an
+    ambiguous '3/4/2026' is left exactly as entered rather than guessed. A cell
+    that holds a URL (the sheet has a few shifted columns) is blanked.
+    """
+    raw = re.sub(r"\s+", " ", (raw or "").replace("\xa0", " ")).strip()
+    if raw.lower().startswith("http"):
+        return ""
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
+    if m:
+        a, b, year = int(m[1]), int(m[2]), m[3]
+        if b > 12 >= a:
+            return f"{b} {_MONTHS[a - 1]} {year}"
+        if a > 12 >= b:
+            return f"{a} {_MONTHS[b - 1]} {year}"
+    return raw
+
+
+def _citation_payload(case, matched_identifier=""):
     return {
         "case_citation": case.case_citation,
+        "matched_identifier": matched_identifier,
         "url_link": case.url_link,
+        "county": case.county,
         "court_station": case.court_station,
-        "judgment_date": case.judgment_date,
+        "location_details": case.location_details,
+        "judgment_date": format_decision_date(case.judgment_date),
         "action": case.action,
         "parties": case.parties,
         "outcome_status": case.outcome_status,
@@ -98,7 +128,11 @@ def find_litigation(raw_query):
         .distinct()
         .order_by("-synced_at")
     )
-    matches = [_citation_payload(c) for c in cases]
+    matches = []
+    for c in cases:
+        ident = next((i.raw_identifier for i in c.identifiers.all()
+                      if i.normalized_identifier == q), "")
+        matches.append(_citation_payload(c, ident))
     if not matches:
         return None
     return {"disclaimer": DISCLAIMER, "matches": matches}

@@ -359,7 +359,7 @@ class SourceAwareTests(TestCase):
 
 class CertificateHelperTests(TestCase):
     def test_decision_dates_are_tidied_without_guessing(self):
-        from ndungu.services import format_decision_date as f
+        from litigation.services import format_decision_date as f
 
         self.assertEqual(f("19 February 2026"), "19 February 2026")
         self.assertEqual(f("6   October 2020"), "6 October 2020")

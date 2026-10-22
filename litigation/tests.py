@@ -42,3 +42,32 @@ class ReviewRequestTests(TestCase):
             self.client.post(self.url, {"parcel_id": "1/2"}, content_type="application/json")
         res = self.client.post(self.url, {"parcel_id": "1/2"}, content_type="application/json")
         self.assertEqual(res.status_code, 429)
+
+
+class FindLitigationPayloadTests(TestCase):
+    def test_payload_carries_county_and_the_matched_identifier(self):
+        from .models import ElcCase, ElcCaseIdentifier
+        from .services import find_litigation
+        from ndungu.services import normalize_parcel_id
+
+        case = ElcCase.objects.create(
+            case_citation="X v Y [2020] KEELC 1 (KLR)", county="Kajiado",
+            location_details="Kitengela",
+        )
+        ElcCaseIdentifier.objects.create(
+            case=case, raw_identifier="Plot No. 55/1",
+            normalized_identifier=normalize_parcel_id("55/1"),
+        )
+        ElcCaseIdentifier.objects.create(
+            case=case, raw_identifier="209/11642",
+            normalized_identifier=normalize_parcel_id("209/11642"),
+        )
+        m = find_litigation("55/1")["matches"][0]
+        self.assertEqual(m["county"], "Kajiado")
+        self.assertEqual(m["matched_identifier"], "Plot No. 55/1")
+        self.assertEqual(m["location_details"], "Kitengela")
+
+    def test_each_sheet_tab_has_a_county(self):
+        from .services import SHEET_COUNTIES, SHEET_EXPORT_URLS
+
+        self.assertEqual(len(SHEET_COUNTIES), len(SHEET_EXPORT_URLS))

@@ -23,7 +23,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from litigation.models import ElcCase, ElcCaseIdentifier
-from litigation.services import SHEET_EXPORT_URLS, split_identifiers
+from litigation.services import SHEET_COUNTIES, SHEET_EXPORT_URLS, split_identifiers
 
 IDENTIFIER_COL_HINT = "title/plot/certificate/allotment/deed plan number"
 
@@ -50,7 +50,7 @@ class Command(BaseCommand):
         total_identifiers = 0
         sheets_ok = 0
 
-        for url in SHEET_EXPORT_URLS:
+        for url, county in zip(SHEET_EXPORT_URLS, SHEET_COUNTIES):
             try:
                 rows = self._fetch_rows(url)
             except urllib.error.URLError as exc:
@@ -82,6 +82,7 @@ class Command(BaseCommand):
                     defaults=dict(
                         url_link=(row.get("URL Link") or "").strip(),
                         court_station=(row.get("Court Station") or "").strip(),
+                        county=county,
                         judgment_date=(row.get("Judgement/Ruling Date") or "").strip(),
                         action=(row.get("Action") or "").strip(),
                         parties=(row.get(parties_col) or "").strip() if parties_col else "",
