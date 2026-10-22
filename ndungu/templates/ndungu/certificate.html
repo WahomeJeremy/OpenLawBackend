@@ -111,7 +111,6 @@
   /* ---- sections ---- */
   h2.sec { margin: 0 0 5.8pt; font-size: 9.75pt; line-height: 14pt; color: #1F2A44; }
   .elc h2.sec { font-size: 12pt; line-height: 16pt; margin-bottom: 10.8pt; }
-  .elc .disc h2.sec { margin-bottom: 8.9pt; }
   .section { margin-bottom: 13.4pt; }
   .box { border: 0.8pt solid #9AA3B5; padding: 10pt 11pt; background: #FDFCF8; }
   .box.tl { padding: 6pt 11pt 5.2pt; }
@@ -157,8 +156,6 @@
   table.cases td.detail div + div { margin-top: 8pt; }
   .nil { border: 0.8pt solid #9AA3B5; padding: 10.5pt 12pt; text-align: center; color: #3B4257; }
 
-  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
-  ol.disclaimer li { margin-bottom: 4.5pt; }
 
   /* ---- LR conversion reference ---- */
   .conv-box { border: 0.8pt solid #9AA3B5; padding: 9pt 11pt; margin-bottom: 14pt; font-size: 9.75pt;
@@ -277,7 +274,7 @@
         <td class="body">
           <div class="eyebrow">Search result</div>
           <div class="t sentence">No litigation record found</div>
-          <div class="s">No Environment and Land Court case in the searched records names this property.<br>To confirm, apply for a manual review (disclaimer point 2).</div>
+          <div class="s">No Environment and Land Court case in the searched records names this property.<br>To confirm, request a manual review.</div>
         </td>
         <td class="count"><div class="in"><div class="n">0</div><div class="c">Cases</div></div></td>
       </tr></table>
@@ -287,15 +284,6 @@
         <div class="nil">Nil &mdash; no case recorded against this property in the searched records.</div>
       </div>
     {% endif %}
-
-    <div class="section disc">
-      <h2 class="sec">Disclaimer</h2>
-      <ol class="disclaimer">
-        <li>1. Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd as of {{ meta.generated_display }}.</li>
-        <li>2. If no record is returned, consider requesting a manual review by quoting {{ meta.certificate_reference }} via <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.</li>
-        <li>3. This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
-      </ol>
-    </div>
 
   {% else %}
   {# ========================= Ndung'u Report ============================ #}
