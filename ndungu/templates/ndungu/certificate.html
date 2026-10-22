@@ -4,134 +4,172 @@
 <meta charset="utf-8">
 <title>{% if cert.source == 'elc' %}Property Litigation Search Certificate{% else %}Certificate of Search on the Ndung'u Report{% endif %} — {{ meta.searched_parcel_id }}</title>
 <style>
-  /* Outfit is bundled so the PDF never depends on a network fetch; the stack
-     below is the fallback if the font can't be loaded on a given host. */
-  @font-face { font-family: "Outfit"; font-weight: 400; src: url("{{ font_dir }}/Outfit-Regular.ttf"); }
-  @font-face { font-family: "Outfit"; font-weight: 500; src: url("{{ font_dir }}/Outfit-Medium.ttf"); }
-  @font-face { font-family: "Outfit"; font-weight: 600; src: url("{{ font_dir }}/Outfit-SemiBold.ttf"); }
-  @font-face { font-family: "Outfit"; font-weight: 700; src: url("{{ font_dir }}/Outfit-Bold.ttf"); }
+  /* Didact Gothic (Regular only -- the face used in the approved certificate
+     designs) is bundled so the PDF never depends on a network fetch.
+     Everything is set at weight 400: there is no bold cut, and a synthesised
+     bold would not match the designs. All measurements below are in pt and
+     taken from the approved A4 sample PDFs (13px = 9.75pt base). */
+  @font-face { font-family: "Didact Gothic"; font-weight: 400; src: url("{{ font_dir }}/DidactGothic-Regular.ttf"); }
 
   @page {
     size: A4;
-    margin: 19mm 21mm 27mm 21mm;
+    margin: 51pt 55.9pt 67.2pt 55.5pt;
     background: #FDFCF8;
     @bottom-left {
       content: "{{ links.site|cut:'https://'|cut:'http://'|default:'legal.ke' }}";
-      width: 50%; vertical-align: top; margin-top: 3mm; padding-top: 3.2mm;
-      border-top: 0.35mm solid #1B2A4A;
-      font-family: "Outfit", "Helvetica Neue", Arial, sans-serif; font-size: 8.5pt; color: #4B5668;
+      width: 50%; vertical-align: top; padding-top: 9pt;
+      border-top: 0.8pt solid #1F2A44;
+      font-family: "Didact Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      font-size: {% if cert.source == 'elc' %}9pt{% else %}9.75pt{% endif %}; color: #1F2A44;
     }
     @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
-      width: 50%; vertical-align: top; margin-top: 3mm; padding-top: 3.2mm; text-align: right;
-      border-top: 0.35mm solid #1B2A4A;
-      font-family: "Outfit", "Helvetica Neue", Arial, sans-serif; font-size: 8.5pt; color: #4B5668;
+      width: 50%; vertical-align: top; padding-top: 9pt; text-align: right;
+      border-top: 0.8pt solid #1F2A44;
+      font-family: "Didact Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+      font-size: {% if cert.source == 'elc' %}9pt{% else %}9.75pt{% endif %}; color: #1F2A44;
     }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Outfit", "Helvetica Neue", Arial, sans-serif;
-    color: #1B2A4A; font-size: 10pt; line-height: 1.45; }
-  a { color: #1B3F7A; text-decoration: underline; }
+  * { box-sizing: border-box; font-weight: 400; }
+  body { margin: 0; font-family: "Didact Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    color: #1C1F29; font-size: 9.75pt; line-height: 15pt; }
+  a { color: #1F3B6B; text-decoration: underline; }
 
-  /* Double-line page frame, repeated on every page. */
-  .frame { position: fixed; top: -12mm; left: -13mm; right: -13mm; bottom: -19mm;
-    border: 1.2mm double #243A63; }
+  /* Double-line page frame (20pt in from the page edge), repeated on every page. */
+  .frame { position: fixed; top: -31pt; left: -35.5pt; right: -35.9pt; bottom: -47.7pt;
+    border: 3pt double #1F2A44; }
 
   /* ---- header ---- */
   .top { width: 100%; border-collapse: collapse; }
   .top td { vertical-align: top; padding: 0; }
-  .top .side { width: 30mm; }
+  .top .side { width: 90pt; }
   .top .mid { text-align: center; }
-  .top .mid img { height: 16mm; width: auto; margin-top: 0; }
+  .top .mid img { height: 46pt; width: auto; margin-top: 5.5pt; }
   .top .qr { text-align: right; }
-  .top .qr img { width: 24mm; height: 24mm; display: block; margin-left: auto; }
-  .top .qr .cap { font-size: 7.5pt; letter-spacing: 0.6px; text-transform: uppercase;
-    color: #5A6578; margin-top: 2mm; }
+  .top .qr img { width: 63pt; height: 63pt; display: block; margin-left: auto; }
+  .top .qr .cap { margin-top: 5.2pt; font-size: 9.75pt; line-height: 12pt; letter-spacing: 0.45pt; white-space: nowrap;
+    text-transform: uppercase; color: #4A5468; }
+  .elc .top .qr .cap { font-size: 9pt; letter-spacing: 1pt; }
+  .elc h1.title { letter-spacing: 0.66pt; }
 
-  h1.title { margin: 9mm 0 0; text-align: center; font-weight: 500; font-size: 15.5pt;
-    letter-spacing: 0; text-transform: uppercase; color: #162E5A; }
-  .subtitle { margin: 2.2mm 0 0; text-align: center; font-size: 9pt; color: #5A6578; }
-  .rule { border: 0; border-top: 0.4mm solid #1B2A4A; margin: 6mm 0 6mm; }
+  h1.title { margin: 10pt 0 0; text-align: center; font-size: 16.5pt; line-height: 20pt;
+    letter-spacing: 0; text-transform: uppercase; color: #1F2A44; }
+  .subtitle { margin: 9pt 0 0; text-align: center; font-size: 9.75pt; line-height: 14pt; color: #3B4257; }
+  .rule { border: 0; border-top: 0.7pt solid #1F2A44; margin: 12pt 0 13.6pt; height: 0; }
+  .elc .rule { margin-top: 10.7pt; margin-bottom: 20pt; }
 
   /* ---- meta row ---- */
-  table.meta { width: 100%; border-collapse: collapse; margin-bottom: 6mm; }
-  table.meta td { padding: 0 4mm 0 0; vertical-align: top; }
-  .meta .k { display: block; font-size: 8pt; letter-spacing: 0.7px; text-transform: uppercase; color: #5A6578; }
-  .meta .v { display: block; font-size: 10pt; margin-top: 1mm; color: #1B2A4A; }
-  .meta .v.strong { font-weight: 600; color: #0F1B33; }
+  .meta { display: flex; margin-bottom: 16.2pt; }
+  .meta .m { flex: 0 0 auto; }
+  .meta.three { justify-content: flex-start; }
+  .meta.three .m { width: 152.5pt; margin-right: 13.5pt; }
+  .meta.four { justify-content: space-between; }
+  .meta .k { display: block; font-size: 9.75pt; line-height: 13pt; letter-spacing: 0.6pt;
+    text-transform: uppercase; color: #4A5468; }
+  .elc .meta .k { font-size: 9pt; }
+  .meta .v { display: block; font-size: 9.75pt; line-height: 14pt; color: #1C1F29; }
+  .elc .meta .v.ref { font-size: 12pt; line-height: 16pt; }
+  .elc .meta { margin-bottom: 19.7pt; }
 
   /* ---- status banner ---- */
-  table.banner { width: 100%; border-collapse: collapse; margin-bottom: 7mm;
+  table.banner { width: 100%; border-collapse: collapse; margin-bottom: 12.7pt;
     page-break-inside: avoid; break-inside: avoid; }
-  table.banner td { vertical-align: middle; padding: 5mm 6mm; }
-  table.banner.found  { background: #FCEEE5; border: 0.5mm solid #B24A1C; color: #8A3410; }
-  table.banner.none   { background: #EAF0FB; border: 0.5mm solid #1F4E96; color: #163A74; }
-  table.banner .ico { width: 17mm; padding-right: 0; }
-  table.banner .ico svg { width: 9mm; height: 9mm; }
-  table.banner .t { font-size: 16pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.2px; }
-  table.banner .s { font-size: 9.5pt; margin-top: 1mm; }
-  table.banner .eyebrow { font-size: 8pt; letter-spacing: 1.2px; text-transform: uppercase; }
-  table.banner .t.sentence { text-transform: none; font-size: 17pt; margin-top: 0.8mm; }
-  table.banner .count { width: 28mm; text-align: center; border-left: 0.3mm solid #C9A58F; }
-  table.banner.none .count { border-left-color: #8DA7D3; }
-  table.banner .count .n { font-size: 24pt; font-weight: 500; line-height: 1; }
-  table.banner .count .c { font-size: 8pt; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 1.5mm; }
+  table.banner td { vertical-align: middle; padding: 0; }
+  table.banner.found { background: #FCF0E6; border: 1.5pt solid #A2410F; }
+  table.banner.none  { background: #EDF2FA; border: 1.5pt solid #1F4E8C; }
+  table.banner .ico { width: 60pt; padding-left: 20pt; }
+  table.banner .ico svg { width: 24pt; height: 24pt; display: block; }
+  table.banner.found .ico { color: #A2410F; }
+  table.banner.none  .ico { color: #1F4E8C; }
+  table.banner .body { padding: 0; }
+  /* Heights from the approved samples; content is vertically centred. */
+  table.banner.h1 td { height: 52.5pt; } table.banner.h1 td.body { padding-bottom: 5.6pt; } table.banner.h2 td { height: 63.8pt; }
+  table.banner.h3 td { height: 81.8pt; } table.banner.h4 td { height: 95.3pt; }
+  /* Litigation banners are top-aligned in the samples (eyebrow 19.7pt below the top edge). */
+  table.banner.h3 td.body, table.banner.h4 td.body { vertical-align: top; padding-top: 15.3pt; }
+  table.banner.h3 td.ico, table.banner.h4 td.ico { vertical-align: top; padding-top: 10pt; }
+  table.banner.h2 .s { margin-top: 6.7pt; }
+  table.banner .t { font-size: 16.5pt; line-height: 20pt; text-transform: uppercase; }
+  table.banner.found .t { color: #7A300A; }
+  table.banner.none  .t { color: #173B69; }
+  table.banner .s { font-size: 9.75pt; line-height: 15pt; margin-top: 4pt; }
+  table.banner.found .s { color: #3A1A08; }
+  table.banner.none  .s { color: #0F2440; }
+  table.banner .eyebrow { font-size: 9pt; line-height: 8.7pt; letter-spacing: 0.9pt; text-transform: uppercase; }
+  table.banner.found .eyebrow { color: #7A300A; }
+  table.banner.none  .eyebrow { color: #173B69; }
+  table.banner .t.sentence { text-transform: none; margin-top: 0; margin-bottom: 7.2pt; }
+  table.banner.h3 .s, table.banner.h4 .s { line-height: 14.2pt; margin-top: 0; }
+  table.banner .count { width: 60pt; text-align: center; padding: 0; }
+  table.banner .count .in { border-left: 0.7pt solid #D9A584; padding: 2pt 0; margin: 21pt 0; }
+  table.banner.none .count .in { border-left-color: #8DA7D3; }
+  table.banner .count .n { font-size: 24pt; line-height: 24pt; margin-bottom: 9pt; }
+  table.banner.found .count .n, table.banner.found .count .c { color: #7A300A; }
+  table.banner.none  .count .n, table.banner.none  .count .c { color: #173B69; }
+  table.banner .count .c { font-size: 9pt; line-height: 12pt; letter-spacing: 0.9pt; text-transform: uppercase; }
 
   /* ---- sections ---- */
-  h2.sec { margin: 0 0 2.5mm; font-size: 11pt; font-weight: 500; color: #162E5A; }
-  .section { margin-bottom: 6mm; }
-  .box { border: 0.3mm solid #8A94B0; padding: 3.5mm 4mm; background: #FDFCF8; }
-  .box.statement { font-weight: 500; color: #0F1B33; page-break-inside: avoid; break-inside: avoid; }
-  p.scope { margin: 3.5mm 0 0; font-size: 9.5pt; color: #4B5668; }
+  h2.sec { margin: 0 0 5.8pt; font-size: 9.75pt; line-height: 14pt; color: #1F2A44; }
+  .elc h2.sec { font-size: 12pt; line-height: 16pt; margin-bottom: 10.8pt; }
+  .elc .disc h2.sec { margin-bottom: 8.9pt; }
+  .section { margin-bottom: 13.4pt; }
+  .box { border: 0.8pt solid #9AA3B5; padding: 10pt 11pt; background: #FDFCF8; }
+  .box.tl { padding: 6pt 11pt 5.2pt; }
+  .box.statement { color: #1C1F29; page-break-inside: avoid; break-inside: avoid; }
+  p.scope { margin: 7pt 0 0; font-size: 9.75pt; line-height: 15pt; color: #293042; }
 
   table.fields { width: 100%; border-collapse: collapse; }
-  table.fields td { border: 0.3mm solid #8A94B0; padding: 2.5mm 3.5mm; vertical-align: top; width: 33.3%; }
-  .fl { display: block; font-size: 8pt; letter-spacing: 0.6px; text-transform: uppercase; color: #5A6578; }
-  .fv { display: block; margin-top: 0.8mm; font-size: 10pt; color: #1B2A4A; }
-  .fv.alert { color: #8A3410; font-weight: 500; text-transform: uppercase; }
+  table.fields td { border: 0.8pt solid #9AA3B5; padding: 6.6pt 7.4pt 2.4pt; vertical-align: top; width: 33.3%; }
+  .fl { display: block; font-size: 9.75pt; line-height: 13pt; letter-spacing: 0.6pt;
+    text-transform: uppercase; color: #4A5468; }
+  .fv { display: block; margin-top: 1.3pt; font-size: 9.75pt; line-height: 14pt; color: #1C1F29; }
+  .fv.alert { color: #7A300A; text-transform: uppercase; }
 
-  .event { padding: 0 0 3mm; margin-bottom: 3mm; border-bottom: 0.2mm solid #D3D8E4;
+  .event { padding: 0 0 10pt; margin-bottom: 10pt; border-bottom: 0.5pt solid #D3D8E4;
     page-break-inside: avoid; break-inside: avoid; }
   .event:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
-  .event .cat { font-size: 10.5pt; font-weight: 500; }
-  .event .cite { font-size: 9.5pt; color: #5A6578; margin: 0.6mm 0 1.6mm; }
-  .event .row { margin-top: 0.6mm; }
-  .sale { margin-top: 2mm; font-size: 9.5pt; color: #4B5668; }
-  .rec-action { font-weight: 500; }
-  .rec-action .alert { color: #8A3410; text-transform: uppercase; }
-  .quote { margin-top: 1.5mm; color: #1B2A4A; }
-  .quote .cite { display: block; font-size: 9.5pt; color: #5A6578; margin-top: 0.6mm; }
+  .event .cat { color: #1C1F29; }
+  .event .cite { color: #3B4257; margin: 2pt 0 4.3pt; }
+  .event .row { line-height: 14pt; }
+  .event .row.reason { margin-top: 3.3pt; }
+  .sale { margin-top: 6pt; color: #293042; }
+  .rec-action .alert { color: #7A300A; text-transform: uppercase; }
+  .quote { margin-top: 4.8pt; color: #1C1F29; }
+  .quote .cite { display: block; color: #3B4257; margin-top: 0; line-height: 14pt; }
 
-  .callout { border-left: 1.1mm solid #1F4E96; background: #EAF0FB; padding: 3.5mm 4.5mm;
-    font-size: 9.8pt; color: #1B2A4A; margin: 0 0 6mm; page-break-inside: avoid; break-inside: avoid; }
+  .callout { border-left: 2.2pt solid #1F4E8C; background: #EDF2FA; padding: 9pt 12pt 8pt;
+    font-size: 9.75pt; line-height: 15pt; color: #0F2440; margin: 0 0 17pt;
+    page-break-inside: avoid; break-inside: avoid; }
+  .callout a { color: #1F3B6B; }
 
   /* ---- ELC schedule ---- */
-  table.cases { width: 100%; border-collapse: collapse; }
-  table.cases th { background: #EFF1F6; border: 0.3mm solid #8A94B0; padding: 2.2mm 3mm; text-align: left;
-    font-size: 8pt; font-weight: 400; letter-spacing: 0.8px; text-transform: uppercase; color: #4B5668; }
-  table.cases td { border: 0.3mm solid #8A94B0; padding: 3mm; vertical-align: top; font-size: 9.8pt; }
-  table.cases { table-layout: fixed; }
-  table.cases th.c-no, table.cases td.no { width: 10mm; }
-  table.cases th.c-county, table.cases td.county { width: 21mm; }
-  table.cases th.c-decision, table.cases td.decision { width: 31mm; }
-  table.cases th.c-outcome, table.cases td.outcome { width: 40mm; }
+  table.cases { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.cases th { background: #EEF0F4; border: 0.8pt solid #9AA3B5; padding: 6.5pt 8.2pt 6pt; text-align: left;
+    font-size: 9pt; line-height: 12.5pt; letter-spacing: 0.9pt; text-transform: uppercase; color: #3B4257; }
+  table.cases td { border: 0.8pt solid #9AA3B5; padding: 8pt 8.2pt; vertical-align: top;
+    font-size: 9.75pt; line-height: 14pt; color: #1C1F29; }
+  table.cases .c-no { width: 37.5pt; } table.cases .c-case { width: 212.2pt; }
+  table.cases .c-county { width: 68.3pt; } table.cases .c-decision { width: 93.7pt; }
+  table.cases .c-outcome { width: 72.8pt; }
   table.cases tbody { page-break-inside: avoid; break-inside: avoid; }
-  .neutral { color: #4B5668; }
-  .nil { border: 0.3mm solid #8A94B0; padding: 4mm; text-align: center; color: #4B5668; }
+  table.cases .neutral { color: #3B4257; }
+  table.cases td.detail { color: #293042; line-height: 14pt; }
+  table.cases td.detail div + div { margin-top: 8pt; }
+  .nil { border: 0.8pt solid #9AA3B5; padding: 10.5pt 12pt; text-align: center; color: #3B4257; }
 
-  ol.disclaimer { margin: 0; padding-left: 4.5mm; font-size: 9pt; color: #4B5668; line-height: 1.5; }
-  ol.disclaimer li { margin-bottom: 1.6mm; padding-left: 1mm; }
+  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
+  ol.disclaimer li { margin-bottom: 4.5pt; }
 
   /* ---- LR conversion reference ---- */
-  .conv-box { border: 0.3mm solid #8A94B0; padding: 3mm 4mm; margin-bottom: 6mm; font-size: 9.5pt;
+  .conv-box { border: 0.8pt solid #9AA3B5; padding: 9pt 11pt; margin-bottom: 14pt; font-size: 9.75pt;
     page-break-inside: avoid; break-inside: avoid; }
-  .conv-heading { margin: 0 0 1mm; font-size: 8pt; letter-spacing: 0.7px; text-transform: uppercase; color: #5A6578; }
-  .conv-lr, .conv-detail, .conv-cite { margin: 0.6mm 0 0; }
-  .conv-detail, .conv-cite { color: #4B5668; font-size: 9pt; }
-  .conv-match-rule { border-top: 0.2mm solid #D3D8E4; margin-top: 2.5mm; padding-top: 2.5mm; }
+  .conv-heading { margin: 0 0 3pt; font-size: 9pt; letter-spacing: 0.7pt; text-transform: uppercase; color: #4A5468; }
+  .conv-lr, .conv-detail, .conv-cite { margin: 1pt 0 0; }
+  .conv-detail, .conv-cite { color: #3B4257; font-size: 9pt; }
+  .conv-match-rule { border-top: 0.5pt solid #D3D8E4; margin-top: 7pt; padding-top: 7pt; }
 </style>
 </head>
-<body>
+<body class="{% if cert.source == 'elc' %}elc{% endif %}">
   <div class="frame"></div>
 
   <table class="top"><tr>
@@ -152,27 +190,33 @@
   {% endif %}
   <hr class="rule">
 
-  <table class="meta"><tr>
-    {% if cert.source == 'elc' %}
-      <td><span class="k">Search reference</span><span class="v strong">{{ meta.searched_parcel_id|default:"—" }}</span></td>
-      <td><span class="k">Certificate reference</span><span class="v">{{ meta.certificate_reference }}</span></td>
-      <td><span class="k">Date of search</span><span class="v">{{ meta.generated_display }}</span></td>
-    {% else %}
-      <td><span class="k">Searched</span><span class="v strong">{{ meta.searched_parcel_id|default:"—" }}</span></td>
-      {% if meta.matched_parcel_id %}
-        <td><span class="k">Matched</span><span class="v strong">{{ meta.matched_parcel_id }}</span></td>
-      {% endif %}
-      <td><span class="k">Reference</span><span class="v">{{ meta.certificate_reference }}</span></td>
-      <td><span class="k">Generated</span><span class="v">{{ meta.generated_display }}</span></td>
-    {% endif %}
-  </tr></table>
+  {% if cert.source == 'elc' %}
+    <div class="meta three">
+      <div class="m"><span class="k">Search reference</span><span class="v ref">{{ meta.searched_parcel_id|default:"—" }}</span></div>
+      <div class="m"><span class="k">Certificate reference</span><span class="v">{{ meta.certificate_reference }}</span></div>
+      <div class="m"><span class="k">Date of search</span><span class="v">{{ meta.generated_display }}</span></div>
+    </div>
+  {% elif meta.matched_parcel_id %}
+    <div class="meta four">
+      <div class="m"><span class="k">Searched</span><span class="v">{{ meta.searched_parcel_id|default:"—" }}</span></div>
+      <div class="m"><span class="k">Matched</span><span class="v">{{ meta.matched_parcel_id }}</span></div>
+      <div class="m"><span class="k">Reference</span><span class="v">{{ meta.certificate_reference }}</span></div>
+      <div class="m"><span class="k">Generated</span><span class="v">{{ meta.generated_display }}</span></div>
+    </div>
+  {% else %}
+    <div class="meta three">
+      <div class="m"><span class="k">Searched</span><span class="v">{{ meta.searched_parcel_id|default:"—" }}</span></div>
+      <div class="m"><span class="k">Reference</span><span class="v">{{ meta.certificate_reference }}</span></div>
+      <div class="m"><span class="k">Generated</span><span class="v">{{ meta.generated_display }}</span></div>
+    </div>
+  {% endif %}
 
   {% if cert.conversion_info %}
     <div class="conv-box">
       {% for m in cert.conversion_info.matches %}
         <div class="{% if not forloop.first %}conv-match-rule{% endif %}">
           <p class="conv-heading">LR number conversion &mdash; reference data</p>
-          <p class="conv-lr"><strong>{{ m.old_lr_no }}</strong> &rarr; <strong>{{ m.new_lr_number }}</strong></p>
+          <p class="conv-lr">{{ m.old_lr_no }} &rarr; {{ m.new_lr_number }}</p>
           <p class="conv-detail">
             {% if m.scheme_name %}Scheme: {{ m.scheme_name }}{% endif %}
             {% if m.area_ha %} &middot; Area: {{ m.area_ha }} Ha{% endif %}
@@ -191,33 +235,33 @@
   {% if cert.source == 'elc' %}
   {# ===================== Property litigation (ELC) ===================== #}
     {% if cert.elc.found %}
-      <table class="banner found"><tr>
-        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
-        <td>
+      <table class="banner found h3"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
+        <td class="body">
           <div class="eyebrow">Search result</div>
           <div class="t sentence">Litigation found</div>
           <div class="s">This property is named in Environment and Land Court proceedings on record.</div>
         </td>
-        <td class="count"><div class="n">{{ cert.elc.matches|length }}</div><div class="c">{{ cert.elc.matches|length|pluralize:"Case,Cases" }}</div></td>
+        <td class="count"><div class="in"><div class="n">{{ cert.elc.matches|length }}</div><div class="c">{{ cert.elc.matches|length|pluralize:"Case,Cases" }}</div></div></td>
       </tr></table>
 
       <div class="section">
         <h2 class="sec">Schedule of cases</h2>
         <table class="cases">
-          <thead><tr><th class="c-no">No.</th><th>Case and citation</th><th class="c-county">County</th><th class="c-decision">Decision</th><th class="c-outcome">Outcome</th></tr></thead>
+          <thead><tr><th class="c-no">No.</th><th class="c-case">Case and citation</th><th class="c-county">County</th><th class="c-decision">Decision</th><th class="c-outcome">Outcome</th></tr></thead>
           {% for m in elc_rows %}
           <tbody>
             <tr>
-              <td class="no">{{ forloop.counter }}</td>
+              <td>{{ forloop.counter }}</td>
               <td>{{ m.title }}{% if m.neutral %}<br><span class="neutral">{{ m.neutral }}</span>{% endif %}</td>
-              <td class="county">{{ m.county|default:"—" }}</td>
-              <td class="decision">{{ m.action|default:"—" }}{% if m.decision_date %}<br>{{ m.decision_date }}{% endif %}</td>
-              <td class="outcome">{{ m.outcome_status|default:"—" }}</td>
+              <td>{{ m.county|default:"—" }}</td>
+              <td>{{ m.action|default:"—" }}{% if m.decision_date %}<br>{{ m.decision_date }}{% endif %}</td>
+              <td>{{ m.outcome_status|default:"—" }}</td>
             </tr>
             {% if m.parties or m.url_link %}
-            <tr class="detail">
+            <tr>
               <td></td>
-              <td colspan="4">
+              <td colspan="4" class="detail">
                 {% if m.parties %}<div>Parties: {{ m.parties }}</div>{% endif %}
                 {% if m.url_link %}<div>Source: <a href="{{ m.url_link }}">{{ m.source_display }}</a></div>{% endif %}
               </td>
@@ -228,14 +272,14 @@
         </table>
       </div>
     {% else %}
-      <table class="banner none"><tr>
-        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M7.5 10.5h6"/></svg></td>
-        <td>
+      <table class="banner none h4"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M7.5 10.5h6"/></svg></td>
+        <td class="body">
           <div class="eyebrow">Search result</div>
           <div class="t sentence">No litigation record found</div>
           <div class="s">No Environment and Land Court case in the searched records names this property.<br>To confirm, apply for a manual review (disclaimer point 2).</div>
         </td>
-        <td class="count"><div class="n">0</div><div class="c">Cases</div></td>
+        <td class="count"><div class="in"><div class="n">0</div><div class="c">Cases</div></div></td>
       </tr></table>
 
       <div class="section">
@@ -244,21 +288,21 @@
       </div>
     {% endif %}
 
-    <div class="section">
+    <div class="section disc">
       <h2 class="sec">Disclaimer</h2>
       <ol class="disclaimer">
-        <li>Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd as of {{ meta.generated_display }}.</li>
-        <li>If no record is returned, consider requesting a manual review by quoting {{ meta.certificate_reference }} via <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.</li>
-        <li>This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
+        <li>1. Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd as of {{ meta.generated_display }}.</li>
+        <li>2. If no record is returned, consider requesting a manual review by quoting {{ meta.certificate_reference }} via <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.</li>
+        <li>3. This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
       </ol>
     </div>
 
   {% else %}
   {# ========================= Ndung'u Report ============================ #}
     {% if cert.ndungu.found %}
-      <table class="banner found"><tr>
-        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
-        <td>
+      <table class="banner found h2"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
+        <td class="body">
           <div class="t">Encumbrance found</div>
           <div class="s">{{ cert.ndungu.tier_b_timeline|length }} {{ cert.ndungu.tier_b_timeline|length|pluralize:"entry,entries" }} found</div>
         </td>
@@ -281,7 +325,7 @@
 
       <div class="section">
         <h2 class="sec">2. Encumbrance timeline</h2>
-        <div class="box">
+        <div class="box tl">
           {% for e in cert.ndungu.tier_b_timeline %}
             <div class="event">
               <div class="cat">{{ forloop.counter }}. {{ e.flag_category|underscore_to_title }}</div>
@@ -289,7 +333,7 @@
               {% if e.reserved_use %}<div class="row">Reserved use: {{ e.reserved_use }}</div>{% endif %}
               {% if e.prior_party %}<div class="row">Prior party: {{ e.prior_party }}</div>{% endif %}
               {% if e.current_holder %}<div class="row">Holder: {{ e.current_holder }}</div>{% endif %}
-              {% if e.flag_reason %}<div class="row">{{ e.flag_reason }}</div>{% endif %}
+              {% if e.flag_reason %}<div class="row reason">{{ e.flag_reason }}</div>{% endif %}
               {% if e.onward_sale %}
                 <div class="sale">Vendor: {{ e.onward_sale.vendor|default:"—" }} &middot;
                   Buyer: {{ e.onward_sale.buyer|default:"—" }} &middot;
@@ -303,7 +347,7 @@
 
       <div class="section">
         <h2 class="sec">3. Commission recommendation</h2>
-        <div class="box">
+        <div class="box tl">
           <div class="rec-action">Action: <span class="alert">{{ cert.ndungu.tier_c_recommendation.action|default:"—" }}</span></div>
           {% for q in cert.ndungu.tier_c_recommendation.raw_quotes %}
             <div class="quote">&ldquo;{{ q.quote }}&rdquo;<span class="cite">{{ q.citation }}</span></div>
@@ -316,9 +360,9 @@
         <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.
       </div>
     {% else %}
-      <table class="banner none"><tr>
-        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M7.5 10.5h6"/></svg></td>
-        <td><div class="t">No encumbrance recorded</div></td>
+      <table class="banner none h1"><tr>
+        <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M7.5 10.5h6"/></svg></td>
+        <td class="body"><div class="t">No encumbrance recorded</div></td>
       </tr></table>
 
       <div class="section">

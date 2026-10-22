@@ -3,6 +3,7 @@
 Pure functions that build the structured certificate payloads. Endpoints in
 views.py call these and persist the audit ledger entry.
 """
+import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -567,6 +568,35 @@ def pdf_filename(cert, searched, source):
     return f"{prefix}_{safe}_{kind}.pdf"
 
 
+def _ensure_fontconfig():
+    """macOS only: point fontconfig at the bundled fonts before WeasyPrint loads.
+
+    The stock Homebrew fontconfig on a Mac fails to match many families by name
+    (and ignores @font-face), so the certificate would silently fall back to a
+    system font. A tiny config that lists the bundled font folder fixes that.
+    Linux/Heroku resolve @font-face through fontconfig natively, so this is a
+    no-op there, and it never overrides a FONTCONFIG_FILE the user already set.
+    """
+    import sys
+
+    if sys.platform != "darwin" or os.environ.get("FONTCONFIG_FILE"):
+        return
+    import tempfile
+
+    fonts = settings.BASE_DIR / "ndungu" / "assets" / "fonts"
+    cfg_dir = os.path.join(tempfile.gettempdir(), "landledger-fontconfig")
+    os.makedirs(cfg_dir, exist_ok=True)
+    conf = os.path.join(cfg_dir, "fonts.conf")
+    with open(conf, "w") as fh:
+        fh.write(
+            '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd">'
+            f"<fontconfig><dir>{fonts}</dir><dir>/System/Library/Fonts</dir>"
+            f"<dir>/System/Library/Fonts/Supplemental</dir>"
+            f"<cachedir>{os.path.join(cfg_dir, 'cache')}</cachedir></fontconfig>"
+        )
+    os.environ["FONTCONFIG_FILE"] = conf
+
+
 def build_pdf_context(cert, meta):
     """Everything certificate.html needs beyond `cert` and `meta`."""
     from pathlib import Path
@@ -596,6 +626,8 @@ def render_certificate_pdf(cert, meta):
     own @page rule carries the repeating frame and "Page X of Y" footer.
     """
     from django.template.loader import render_to_string
+
+    _ensure_fontconfig()  # must run before WeasyPrint/Pango first initialise
     from weasyprint import HTML  # lazy import: native libs only needed here
 
     html = render_to_string("ndungu/certificate.html", build_pdf_context(cert, meta))
