@@ -49,3 +49,29 @@ class ElcCaseIdentifier(models.Model):
 
     def __str__(self):
         return f"{self.raw_identifier} ({self.case_id})"
+
+
+class ManualReviewRequest(models.Model):
+    """A user's request for staff to check a parcel by hand.
+
+    ELC's indexed coverage has a known gap, so a "no ELC litigation recorded"
+    certificate is not a guarantee. This is the user's way to ask us to look
+    manually. Reference data only -- it never changes a certificate's verdict.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_DONE = "done"
+    STATUS_CHOICES = [(STATUS_PENDING, "Pending"), (STATUS_DONE, "Done")]
+
+    parcel_id = models.CharField(max_length=255, db_index=True)
+    certificate_reference = models.CharField(max_length=100, blank=True)
+    contact_email = models.EmailField(blank=True)
+    notes = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.parcel_id} ({self.status})"

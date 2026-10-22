@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Article
+from .models import Category, Article, ArticleView
 
 
 @admin.register(Category)
@@ -58,3 +58,10 @@ class ArticleAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('category')
+
+
+@admin.register(ArticleView)
+class ArticleViewAdmin(admin.ModelAdmin):
+    list_display = ['article', 'viewed_at']
+    list_filter = ['viewed_at']
+    date_hierarchy = 'viewed_at'
