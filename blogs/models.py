@@ -42,3 +42,18 @@ class Article(models.Model):
 
     def get_absolute_url(self):
         return reverse('blogs:article_detail', kwargs={'category_pk': self.category.pk, 'slug': self.slug})
+
+
+class ArticleView(models.Model):
+    """One 'article opened in the reading panel' event. Article bodies are
+    bulk-loaded up front, so this beacon is the only signal for which
+    articles actually get read."""
+
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="views")
+    viewed_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-viewed_at"]
+
+    def __str__(self):
+        return f"{self.article_id} @ {self.viewed_at:%Y-%m-%d %H:%M}"

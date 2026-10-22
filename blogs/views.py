@@ -1,10 +1,11 @@
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.db import models
-from .models import Category, Article
+from .models import Category, Article, ArticleView
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -241,3 +242,21 @@ class BlogInternalDashboard(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except (Category.DoesNotExist, Article.DoesNotExist):
             return Response({'error': 'Item not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ArticleViewThrottle(AnonRateThrottle):
+    rate = "120/hour"
+
+
+class ArticleViewBeacon(APIView):
+    """Fire-and-forget beacon: the reading panel opened this article."""
+
+    throttle_classes = [ArticleViewThrottle]
+
+    def post(self, request, pk):
+        try:
+            article = Article.objects.get(pk=pk, is_published=True)
+        except Article.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        ArticleView.objects.create(article=article)
+        return Response(status=status.HTTP_204_NO_CONTENT)
