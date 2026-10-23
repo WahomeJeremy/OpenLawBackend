@@ -6,4 +6,5 @@ app_name = "litigation"
 
 urlpatterns = [
     path("review-request/", views.ReviewRequestView.as_view(), name="review_request"),
+    path("review/<str:token>/", views.ReviewStatusView.as_view(), name="review_status"),
 ]

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from conversions.services import find_conversions
-from litigation.services import find_litigation
+from litigation.services import active_review, find_litigation, review_payload
 
 from .models import CertificateLog, Parcel, normalize_parcel_id
 from .services import (
@@ -121,6 +121,11 @@ class CertificatePDFView(APIView):
         litigation_info = find_litigation(q)
         cert = build_combined_certificate(parcel, litigation_info, q)
         cert["source"] = source  # the PDF is about this one dataset only
+        # A completed manual review (token from the emailed link) upgrades the
+        # litigation certificate's wording; ignored if it was for another parcel.
+        review = active_review(data.get("review_token"), q) if source == "elc" else None
+        if review:
+            cert["review"] = review_payload(review)
         shown = cert["overview"]["parcel"]
         count = parcel.findings.count() if parcel else 0
         ref = log_search(shown, normalized, count, source_status(cert, source),

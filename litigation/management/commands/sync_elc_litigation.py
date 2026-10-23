@@ -24,6 +24,7 @@ from django.db import transaction
 
 from litigation.models import ElcCase, ElcCaseIdentifier
 from litigation.services import SHEET_COUNTIES, SHEET_EXPORT_URLS, split_identifiers
+from ndungu.models import normalize_parcel_id
 
 IDENTIFIER_COL_HINT = "title/plot/certificate/allotment/deed plan number"
 
@@ -102,6 +103,13 @@ class Command(BaseCommand):
                             case=case, normalized_identifier=normalized,
                             defaults=dict(raw_identifier=raw_id),
                         )
+                    # The rewrite above drops identifiers staff linked through a
+                    # manual review; put those back.
+                    for review in case.manual_reviews.filter(status="done"):
+                        ElcCaseIdentifier.objects.get_or_create(
+                            case=case, normalized_identifier=normalize_parcel_id(review.parcel_id),
+                            defaults=dict(raw_identifier=review.parcel_id),
+                        )
                 total_identifiers += len(pairs)
 
         if sheets_ok == 0:
@@ -110,7 +118,7 @@ class Command(BaseCommand):
 
         # Cases removed from BOTH sheets (e.g. a bad row deleted by an editor)
         # are removed here too, so the dataset always mirrors the live sheets.
-        removed, _ = ElcCase.objects.exclude(case_citation__in=seen_citations).delete()
+        removed, _ = ElcCase.objects.filter(source="sheet").exclude(case_citation__in=seen_citations).delete()
 
         self.stdout.write(self.style.SUCCESS(
             f"ELC sync: {sheets_ok}/{len(SHEET_EXPORT_URLS)} sheets read | "

@@ -307,6 +307,26 @@ class SourceAwareTests(TestCase):
                          data={"parcel_id": "55/1"}, content_type="application/json")
         self.assertEqual(mock_render.call_args[0][0]["source"], "ndungu")
 
+    @patch("ndungu.views.render_certificate_pdf", return_value=b"%PDF-1.7 test")
+    def test_pdf_endpoint_applies_a_completed_review_to_its_own_parcel_only(self, mock_render):
+        from litigation.models import ManualReviewRequest
+        from litigation.services import complete_review
+
+        req = ManualReviewRequest.objects.create(
+            parcel_id="77/7", contact_email="u@x.co", outcome=ManualReviewRequest.OUTCOME_CLEAR)
+        post = lambda q, tok: self.client.post(
+            "/api/ndungu/certificate/", data={"parcel_id": q, "source": "elc", "review_token": tok},
+            content_type="application/json")
+        post("77/7", req.access_token)
+        self.assertNotIn("review", mock_render.call_args[0][0])      # still pending
+        complete_review(req)
+        post("77/7", req.access_token)
+        self.assertEqual(mock_render.call_args[0][0]["review"]["review_reference"], req.review_reference)
+        post("88/8", req.access_token)
+        self.assertNotIn("review", mock_render.call_args[0][0])      # different parcel
+        post("77/7", "forged-token")
+        self.assertNotIn("review", mock_render.call_args[0][0])
+
     def _html(self, q, source):
         from django.template.loader import render_to_string
         from ndungu.services import build_combined_certificate, build_pdf_context
@@ -336,6 +356,26 @@ class SourceAwareTests(TestCase):
         html = self._html("77/7", "elc")
         self.assertIn("No litigation record found", html)
         self.assertIn("no case recorded against this property", html)
+
+    def test_elc_nil_without_review_says_so_and_does_not_tell_the_reader_to_act(self):
+        html = self._html("77/7", "elc")
+        self.assertIn("indexed records", html)
+        self.assertIn("Not confirmed by manual review", html)
+        self.assertNotIn("request a manual review", html)
+
+    def test_elc_nil_with_review_is_marked_confirmed(self):
+        from django.template.loader import render_to_string
+        from ndungu.services import build_combined_certificate, build_pdf_context
+
+        cert = build_combined_certificate(None, None, "77/7")
+        cert["source"] = "elc"
+        cert["review"] = {"review_reference": "MR-20261023-ABC123", "reviewed_display": "23 Oct 2026"}
+        meta = {"searched_parcel_id": "77/7", "certificate_reference": "REF-1",
+                "generated_display": "23 Oct 2026, 10:00 EAT"}
+        html = render_to_string("ndungu/certificate.html", build_pdf_context(cert, meta))
+        self.assertIn("Confirmed by Landledger manual review (ref. MR-20261023-ABC123, 23 Oct 2026)", html)
+        self.assertIn("located and indexed", html)
+        self.assertNotIn("Not confirmed by manual review", html)
 
     def test_ndungu_nil_points_to_the_litigation_search(self):
         html = self._html("77/7", "ndungu")
