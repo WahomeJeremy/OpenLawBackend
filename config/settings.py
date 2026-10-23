@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "ndungu",
     "conversions",
     "litigation",
+    "payments",
 ]
 
 MIDDLEWARE = [
@@ -163,6 +164,15 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Public-facing verify page the certificate QR code points to.
 NDUNGU_VERIFY_URL = config("NDUNGU_VERIFY_URL", default="https://legal.ke/verify")
+
+# Daraja (M-Pesa STK Push) -- see payments app.
+MPESA_ENV = config("MPESA_ENV", default="sandbox")  # "sandbox" or "production"
+MPESA_SHORTCODE = config("MPESA_SHORTCODE", default="")
+MPESA_PASSKEY = config("MPESA_PASSKEY", default="")
+MPESA_CONSUMER_KEY = config("MPESA_CONSUMER_KEY", default="")
+MPESA_CONSUMER_SECRET = config("MPESA_CONSUMER_SECRET", default="")
+MPESA_CALLBACK_URL = config("MPESA_CALLBACK_URL", default="")
+MPESA_CERTIFICATE_PRICE = config("MPESA_CERTIFICATE_PRICE", default=650, cast=int)
 
 # Email configuration
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
