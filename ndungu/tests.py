@@ -501,9 +501,16 @@ class ElcCertificateDisclaimerTests(TestCase):
         self.assertNotIn("as of 26 Oct 2026, 10:17 EAT", html)
         self.assertIn("as of ", html)  # the index's last-updated date
 
-    def test_ndungu_certificates_carry_no_disclaimer(self):
-        for q in ("209/11642", "77/7"):
-            self.assertNotIn("Disclaimer", self._html(q, "ndungu"))
+    def test_ndungu_certificates_close_with_the_ndungu_report_disclaimer(self):
+        import html as htmllib
+
+        for q in ("209/11642", "77/7"):  # found, then nil
+            html = htmllib.unescape(self._html(q, "ndungu"))
+            self.assertIn("Disclaimer", html)
+            self.assertIn("Based on the 2004 Ndung'u Report", html)
+            self.assertIn("Not a legal title or a substitute for an official Ministry of Lands Registry search", html)
+            # ...and none of the litigation certificate's wording
+            self.assertNotIn("currently indexed by Landledger Ltd", html)
 
     def test_index_stats_report_count_and_freshness(self):
         stats = services.elc_index_stats()
@@ -691,3 +698,20 @@ class ElcNilStatementTests(TestCase):
                          "No ELC litigation case recorded against parcel 209/11642.")
         self.assertEqual(services.elc_nil_statement("mary kaittany"),
                          "No ELC litigation case recorded against \u201cMary Kaittany\u201d.")
+
+
+class DisclaimerNeverCrossesJourneysTests(TestCase):
+    """Each certificate carries only its own dataset's disclaimer."""
+
+    def test_litigation_certificate_has_no_ndungu_disclaimer(self):
+        from django.template.loader import render_to_string
+
+        cert = services.build_combined_certificate(None, None, "77/7")
+        cert["source"] = "elc"
+        meta = {"searched_parcel_id": "77/7", "certificate_reference": "R1", "generated_display": "x"}
+        html = render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
+        import html as htmllib
+
+        html = htmllib.unescape(html)
+        self.assertIn("currently indexed by Landledger Ltd", html)
+        self.assertNotIn("Based on the 2004 Ndung'u Report", html)
