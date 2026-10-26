@@ -162,13 +162,20 @@
   .elc .disc h2.sec { margin-bottom: 8.9pt; }
 
   /* ---- LR conversion reference ---- */
+  /* LR conversion: same label/value grid as the parcel summary, unboxed, hairlines only */
   .conv { margin: 0 0 16pt; page-break-inside: avoid; break-inside: avoid; }
-  .conv-heading { margin: 0 0 9pt; padding-bottom: 5pt; border-bottom: 0.7pt solid #1F2A44;
+  .conv-heading { page-break-after: avoid; break-after: avoid; }
+  .conv-heading { margin: 0 0 8pt; padding-bottom: 5pt; border-bottom: 0.7pt solid #1F2A44;
     font-size: 9pt; line-height: 12pt; letter-spacing: 0.9pt; text-transform: uppercase; color: #4A5468; }
-  .conv-match { margin: 0; }
-  .conv-match + .conv-match { margin-top: 10pt; }
-  .conv-lr { margin: 0; line-height: 15pt; color: #1C1F29; }
-  .conv-detail, .conv-cite { margin: 3pt 0 0; font-size: 9pt; line-height: 13.5pt; color: #3B4257; }
+  .conv-count { margin: 10pt 0 2pt; font-size: 9pt; letter-spacing: 0.7pt; text-transform: uppercase; color: #4A5468; }
+  table.cg { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  table.cg td { width: 50%; vertical-align: top; padding: 0 0 7pt; }
+  table.cg td.l { padding-right: 14pt; } table.cg td.r { padding-left: 14pt; }
+  table.cg .cell { border-bottom: 0.5pt solid #C8CEDA; padding: 3pt 0 6pt; }
+  table.cg .fl { display: block; font-size: 9pt; line-height: 12pt; letter-spacing: 0.6pt;
+    text-transform: uppercase; color: #4A5468; }
+  table.cg .fv { display: block; margin-top: 1pt; font-size: 9.75pt; line-height: 14pt; color: #1C1F29; }
+  table.cg .fv.new { color: #1C1F29; }
 </style>
 </head>
 <body class="{% if cert.source == 'elc' %}elc{% endif %}">
@@ -210,27 +217,6 @@
       <div class="m"><span class="k">Searched</span><span class="v">{{ meta.searched_parcel_id|default:"—" }}</span></div>
       <div class="m"><span class="k">Reference</span><span class="v">{{ meta.certificate_reference }}</span></div>
       <div class="m"><span class="k">Generated</span><span class="v">{{ meta.generated_display }}</span></div>
-    </div>
-  {% endif %}
-
-  {% if cert.conversion_info %}
-    <div class="conv">
-      <p class="conv-heading">LR number conversion &mdash; reference data</p>
-      {% for m in cert.conversion_info.matches %}
-        <div class="conv-match">
-          <p class="conv-lr">{{ m.old_lr_no }} &rarr; {{ m.new_lr_number }}</p>
-          <p class="conv-detail">
-            {% if m.scheme_name %}Scheme: {{ m.scheme_name }}{% endif %}
-            {% if m.area_ha %} &middot; Area: {{ m.area_ha }} Ha{% endif %}
-            {% if m.registration_unit %} &middot; Unit: {{ m.registration_unit }}{% endif %}
-          </p>
-          {% if m.citations %}
-            <p class="conv-cite">
-              {% for c in m.citations %}{% if not forloop.first %}; {% endif %}{{ c.gazette_vol_no }} ({{ c.gazette_date }}){% endfor %}
-            </p>
-          {% endif %}
-        </div>
-      {% endfor %}
     </div>
   {% endif %}
 
@@ -295,6 +281,8 @@
         {% if cert.review %}<p class="scope">Confirmed by Landledger manual review (ref. {{ cert.review.review_reference }}, {{ cert.review.reviewed_display }}).</p>{% endif %}
       </div>
     {% endif %}
+
+  {% include "ndungu/_conversion.html" %}
 
     <div class="section disc">
       <h2 class="sec">Disclaimer</h2>
@@ -362,6 +350,8 @@
         </div>
       </div>
 
+  {% include "ndungu/_conversion.html" %}
+
       <div class="callout">
         Request a copy of the relevant page of the report{% if pages_ref %} ({{ pages_ref }}){% endif %} by quoting {{ meta.certificate_reference }} via
         <a href="{{ links.email }}">Email</a>, <a href="{{ links.whatsapp }}">WhatsApp</a> or this <a href="{{ links.form }}">Form</a>.
@@ -377,6 +367,8 @@
         <div class="box statement">{{ cert.ndungu.legal_statement }}</div>
         <p class="scope">{{ cert.ndungu.search_scope }}</p>
       </div>
+
+  {% include "ndungu/_conversion.html" %}
 
       <div class="callout">
         Check whether there is any reported court decision in respect of this property by running a

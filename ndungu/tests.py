@@ -510,3 +510,39 @@ class ElcCertificateDisclaimerTests(TestCase):
         self.assertEqual(stats["count"], 1)
         self.assertEqual(stats["count_display"], "1")
         self.assertRegex(stats["as_of"], r"^\d{2} [A-Z][a-z]{2} \d{4}$")
+
+
+class ConversionBlockTests(TestCase):
+    """LR conversion data is a label/value grid like the parcel summary."""
+
+    INFO = {"matches": [{
+        "old_lr_no": "209/11642", "new_lr_number": "NAIROBI/BLOCK 30/32", "scheme_name": "LOWER HILL",
+        "area_ha": "0.2100", "registration_unit": "Nairobi",
+        "citations": [{"gazette_vol_no": "Vol. CXXIV—No. 94", "gazette_date": "20th May 2022"}],
+    }]}
+
+    def test_fields_come_in_rows_of_two_with_gazetted_beside_the_registration_unit(self):
+        (block,) = services.conversion_blocks(self.INFO)
+        labels = [[c["label"] for c in row] for row in block["rows"]]
+        self.assertEqual(labels, [["Old LR number", "New LR number"], ["Scheme", "Area (Ha)"],
+                                  ["Registration unit", "Gazetted"]])
+        self.assertEqual(block["rows"][-1][1]["value"], "Vol. CXXIV—No. 94 (20th May 2022)")
+
+    def test_missing_optional_fields_are_skipped_not_dashed(self):
+        (block,) = services.conversion_blocks({"matches": [{"old_lr_no": "1/2", "new_lr_number": "N/1"}]})
+        self.assertEqual([[c["label"] for c in r] for r in block["rows"]], [["Old LR number", "New LR number"]])
+
+    def test_no_conversion_means_no_blocks(self):
+        self.assertEqual(services.conversion_blocks(None), [])
+
+    def test_section_renders_on_every_certificate_kind(self):
+        from django.template.loader import render_to_string
+
+        for source in ("ndungu", "elc"):
+            cert = services.build_combined_certificate(None, None, "209/11642")
+            cert["source"] = source
+            cert["conversion_info"] = self.INFO
+            meta = {"searched_parcel_id": "209/11642", "certificate_reference": "R1", "generated_display": "x"}
+            html = render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
+            for text in ("LR number conversion", "Old LR number", "NAIROBI/BLOCK 30/32", "LOWER HILL", "Gazetted"):
+                self.assertIn(text, html, f"{text!r} missing on the {source} certificate")

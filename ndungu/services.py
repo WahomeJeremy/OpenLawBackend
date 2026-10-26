@@ -597,6 +597,25 @@ def _ensure_fontconfig():
     os.environ["FONTCONFIG_FILE"] = conf
 
 
+def conversion_blocks(info):
+    """LR-conversion matches as label/value fields in rows of two, mirroring the
+    Parcel Summary layout. Missing optional fields are skipped, not shown as dashes."""
+    blocks = []
+    for m in (info or {}).get("matches", []):
+        cells = [("Old LR number", m.get("old_lr_no")), ("New LR number", m.get("new_lr_number"))]
+        for label, key in (("Scheme", "scheme_name"), ("Area (Ha)", "area_ha"),
+                           ("Registration unit", "registration_unit")):
+            if m.get(key):
+                cells.append((label, m[key]))
+        cites = "; ".join(f"{c.get('gazette_vol_no', '')} ({c.get('gazette_date', '')})"
+                          for c in m.get("citations") or [])
+        if cites:  # sits beside the registration unit rather than on a row of its own
+            cells.append(("Gazetted", cites))
+        rows = [[{"label": l, "value": v} for l, v in cells[i:i + 2]] for i in range(0, len(cells), 2)]
+        blocks.append({"rows": rows})
+    return blocks
+
+
 def elc_index_stats():
     """What the ELC certificate's 'indexed decisions' refers to: how many
     decisions Landledger holds and when that index was last updated."""
@@ -623,6 +642,7 @@ def build_pdf_context(cert, meta):
         "cert": cert, "meta": meta, "logo": _logo_data_uri(),
         "qr": qr_data_uri(meta.get("verify_url", "")),
         "font_dir": (Path(settings.BASE_DIR) / "ndungu" / "assets" / "fonts").as_uri(),
+        "conv_blocks": conversion_blocks(cert.get("conversion_info")),
     }
     if source == "elc":
         ctx["elc_rows"] = elc_rows(cert["elc"].get("matches", []))

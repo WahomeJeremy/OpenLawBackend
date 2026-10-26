@@ -1,0 +1,18 @@
+  {% if conv_blocks %}
+    <div class="conv">
+      <p class="conv-heading">LR number conversion &mdash; reference data</p>
+      {% for block in conv_blocks %}
+        {% if conv_blocks|length > 1 %}<p class="conv-count">Conversion {{ forloop.counter }} of {{ conv_blocks|length }}</p>{% endif %}
+        <table class="cg">
+          {% for row in block.rows %}
+            <tr>
+              {% for f in row %}
+                <td class="{% if forloop.first %}l{% else %}r{% endif %}"><div class="cell"><span class="fl">{{ f.label }}</span><span class="fv">{{ f.value }}</span></div></td>
+              {% endfor %}
+              {% if row|length == 1 %}<td class="r"></td>{% endif %}
+            </tr>
+          {% endfor %}
+        </table>
+      {% endfor %}
+    </div>
+  {% endif %}
