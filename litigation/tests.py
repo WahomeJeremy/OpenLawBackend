@@ -143,3 +143,84 @@ class ManualReviewWorkflowTests(TestCase):
         complete_review(self.req)
         self.assertIsNotNone(active_review(self.req.access_token, "209/11642"))
         self.assertIsNone(active_review(self.req.access_token, "1/2"))
+
+
+class OversizedIdentifierTests(TestCase):
+    """A cell that lists many parcels with commas must not become one giant identifier."""
+
+    LONG = ("L.R No. 97/5262 police post, L.R No. 97/5265, D.O’s office, L.R No. 97/ 5264 chief’s office, "
+            "L.R No. 97/5263 post office, Nairobi/Block 37/283 (former 209/22334), 209/6002/7, 12826, "
+            + ", ".join(f"15400/{n}" for n in range(1, 120)))
+
+    def test_an_oversized_cell_is_split_into_individual_parcel_numbers(self):
+        from .services import MAX_IDENTIFIER_LEN, split_identifiers
+
+        self.assertGreater(len(self.LONG), MAX_IDENTIFIER_LEN)
+        pairs = split_identifiers(self.LONG)
+        raws = [r for r, _ in pairs]
+        for expected in ("97/5262", "97/5265", "97/5264", "209/6002/7", "12826", "15400/57",
+                         "Nairobi/Block 37/283", "209/22334"):
+            self.assertIn(expected, raws)
+        self.assertNotIn("D.O’s office", " ".join(raws))      # words are not identifiers
+        self.assertTrue(all(len(r) <= MAX_IDENTIFIER_LEN and len(n) <= MAX_IDENTIFIER_LEN for r, n in pairs))
+        self.assertEqual(len(raws), len(set(raws)))             # no duplicates
+
+    def test_ordinary_cells_are_untouched(self):
+        from .services import split_identifiers
+
+        self.assertEqual([r for r, _ in split_identifiers("L.R No. 209/11642; Title LR Ngong/Ngong/10915")],
+                         ["L.R No. 209/11642", "Title LR Ngong/Ngong/10915"])
+        self.assertEqual(split_identifiers("NONE"), [])
+
+    def test_the_parcels_inside_a_long_list_are_now_findable(self):
+        from .models import ElcCase, ElcCaseIdentifier
+        from .services import find_litigation, split_identifiers
+
+        case = ElcCase.objects.create(case_citation="Mua & 4 others v Dandora [2020] KEELC 1 (KLR)", county="Nairobi")
+        for raw, norm in split_identifiers(self.LONG):
+            ElcCaseIdentifier.objects.get_or_create(case=case, normalized_identifier=norm,
+                                                    defaults={"raw_identifier": raw})
+        self.assertEqual(len(find_litigation("15400/57")["matches"]), 1)
+        self.assertEqual(len(find_litigation("97/5264")["matches"]), 1)
+
+
+class SyncSurvivesBadRowsTests(TestCase):
+    """PostgreSQL rejects over-long values (SQLite doesn't): one bad sheet row must not abort the sync."""
+
+    def _run(self, rows):
+        from django.core.management import call_command
+        from unittest.mock import patch
+
+        from .management.commands.sync_elc_litigation import Command
+
+        with patch.object(Command, "_fetch_rows", return_value=rows):
+            call_command("sync_elc_litigation", verbosity=0)
+
+    def _row(self, **kw):
+        row = {"Case Citation": "A v B [2025] KEELC 1 (KLR)", "URL Link": "https://x.org/a", "Court Station": "NAIROBI",
+               "Judgement/Ruling Date": "19 February 2026", "Action": "Ruling", "Parties": "A; B",
+               "Location Details": "Nairobi", "Case Outcome": "Dismissed", "Timestamp": "1/1/2026",
+               "Title/Plot/Certificate/Allotment/Deed Plan Number": "209/11642"}
+        row.update(kw)
+        return row
+
+    def test_overlong_values_are_clipped_and_oversized_identifier_cells_are_expanded(self):
+        from django.db.models import CharField
+
+        from .models import ElcCase, ElcCaseIdentifier
+
+        ids_col = "Title/Plot/Certificate/Allotment/Deed Plan Number"
+        rows = [
+            self._row(**{"Court Station": "N" * 400, "Judgement/Ruling Date": "D" * 300, "Action": "R" * 120}),
+            self._row(**{"Case Citation": "C v D [2025] KEELC 2 (KLR)",
+                         ids_col: ", ".join(f"15400/{n}" for n in range(1, 150))}),
+        ]
+        self._run(rows)
+
+        self.assertEqual(ElcCase.objects.count(), 2)  # nothing was dropped or aborted
+        for model in (ElcCase, ElcCaseIdentifier):
+            for f in model._meta.fields:
+                if isinstance(f, CharField) and f.max_length:
+                    longest = max((len(getattr(o, f.name) or "") for o in model.objects.all()), default=0)
+                    self.assertLessEqual(longest, f.max_length, f"{model.__name__}.{f.name}")
+        self.assertTrue(ElcCaseIdentifier.objects.filter(normalized_identifier="15400/77").exists())

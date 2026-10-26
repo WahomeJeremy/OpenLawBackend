@@ -59,6 +59,28 @@ DISCLAIMER = (
 )
 
 
+# An identifier column is meant to hold ONE parcel per ';'-separated item, but some
+# cells list dozens of parcels with commas instead. Such an oversized item is not one
+# identifier (it can never match a search, and it overflows the 255-character column
+# on PostgreSQL), so the individual parcel numbers are pulled out of it.
+MAX_IDENTIFIER_LEN = 255
+_PARCEL_NUMBER = re.compile(
+    r"(?:[A-Za-z]+/)*Block\s+\d+/\d+"   # Nairobi/Block 37/283
+    r"|\d+(?:\s*/\s*\d+)+"              # 97/5262, 209/6002/7, 97/ 5264
+    r"|\b\d{4,}\b"                       # a plain LR number: 12826
+)
+
+
+def _expand_oversized(piece):
+    seen, out = set(), []
+    for m in _PARCEL_NUMBER.finditer(piece):
+        token = re.sub(r"\s*/\s*", "/", re.sub(r"\s+", " ", m.group(0))).strip()  # "97/ 5264" -> "97/5264"
+        if token not in seen and len(token) <= MAX_IDENTIFIER_LEN:
+            seen.add(token)
+            out.append(token)
+    return out
+
+
 def split_identifiers(raw_cell):
     """Split the sheet's identifier cell into cleaned (raw, normalized)
     pairs, dropping blanks and 'NONE' placeholders."""
@@ -66,6 +88,12 @@ def split_identifiers(raw_cell):
     for piece in (raw_cell or "").split(";"):
         piece = piece.strip().strip('"').strip()
         if not piece or _NONE_RE.match(piece):
+            continue
+        if len(piece) > MAX_IDENTIFIER_LEN:
+            for token in _expand_oversized(piece):
+                normalized = normalize_parcel_id(token)
+                if normalized:
+                    out.append((token, normalized))
             continue
         # Some cells stack labels ("L.R No. Number 12337/6") -- strip
         # leading labels repeatedly until nothing more comes off.

@@ -36,6 +36,16 @@ def _find_column(fieldnames, hint):
     return None
 
 
+def _clip(model, values):
+    """Trim each string to its column's max_length. PostgreSQL rejects an over-long
+    value (SQLite doesn't), and one bad sheet row must not abort the whole sync."""
+    for name, value in values.items():
+        limit = getattr(model._meta.get_field(name), "max_length", None)
+        if limit and isinstance(value, str) and len(value) > limit:
+            values[name] = value[:limit]
+    return values
+
+
 class Command(BaseCommand):
     help = "Sync ELC litigation cases from the public Google Sheet CSV exports (both tabs)."
 
@@ -76,11 +86,12 @@ class Command(BaseCommand):
                 if not citation:
                     skipped += 1
                     continue
+                citation = citation[:ElcCase._meta.get_field("case_citation").max_length]
                 seen_citations.add(citation)
 
                 case, was_created = ElcCase.objects.update_or_create(
                     case_citation=citation,
-                    defaults=dict(
+                    defaults=_clip(ElcCase, dict(
                         url_link=(row.get("URL Link") or "").strip(),
                         court_station=(row.get("Court Station") or "").strip(),
                         county=county,
@@ -90,7 +101,7 @@ class Command(BaseCommand):
                         location_details=(row.get(location_col) or "").strip() if location_col else "",
                         outcome_status=(row.get(outcome_col) or "").strip() if outcome_col else "",
                         sheet_timestamp=(row.get("Timestamp") or "").strip(),
-                    ),
+                    )),
                 )
                 created += was_created
                 updated += not was_created
