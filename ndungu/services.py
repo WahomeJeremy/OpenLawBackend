@@ -555,7 +555,7 @@ def contact_links(reference, topic):
     from urllib.parse import quote
 
     msg = quote(f"Hello, I'd like to {topic} for certificate {reference}.")
-    wa = getattr(settings, "CERTIFICATE_WHATSAPP_URL", "https://wa.me/254733887188")
+    wa = getattr(settings, "CERTIFICATE_WHATSAPP_URL", "https://wa.me/254180049253")
     return {
         "email": f"mailto:{getattr(settings, 'SUPPORT_EMAIL', '')}?subject={quote('Certificate ' + reference)}",
         "whatsapp": f"{wa}{'&' if '?' in wa else '?'}text={msg}",

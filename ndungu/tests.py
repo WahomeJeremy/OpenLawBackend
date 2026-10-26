@@ -734,3 +734,15 @@ class RequestAPageCalloutTests(TestCase):
         self.assertIn(">WhatsApp</a>.", html)
         self.assertNotIn(">Form</a>", html)
         self.assertNotIn("this Form", html)
+
+
+class ContactNumberTests(TestCase):
+    def test_certificate_whatsapp_link_uses_the_current_number(self):
+        from django.test import override_settings
+
+        links = services.contact_links("NDR-1", "request a copy")
+        self.assertTrue(links["whatsapp"].startswith("https://wa.me/254180049253?text="), links["whatsapp"])
+        self.assertIn("NDR-1", links["whatsapp"])
+        # a deployment override still wins over the default
+        with override_settings(CERTIFICATE_WHATSAPP_URL="https://wa.me/254700000001"):
+            self.assertTrue(services.contact_links("NDR-1", "x")["whatsapp"].startswith("https://wa.me/254700000001?text="))
