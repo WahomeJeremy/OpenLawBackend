@@ -746,3 +746,54 @@ class ContactNumberTests(TestCase):
         # a deployment override still wins over the default
         with override_settings(CERTIFICATE_WHATSAPP_URL="https://wa.me/254700000001"):
             self.assertTrue(services.contact_links("NDR-1", "x")["whatsapp"].startswith("https://wa.me/254700000001?text="))
+
+
+class NameSearchCertificateTests(TestCase):
+    """What the certificate says when the cases were found by a party name."""
+
+    def _html(self, term, source, litigation=None, outcome="Dismissed", total=None, truncated=False):
+        from django.template.loader import render_to_string
+
+        info = None
+        if litigation:
+            info = {"disclaimer": "d", "match_basis": litigation, "total": total or 1, "truncated": truncated,
+                    "matches": [{"case_citation": "A v B [2020] KEELC 1 (KLR)", "county": "Nairobi",
+                                 "outcome_status": outcome, "parties": "A; B"}]}
+        cert = services.build_combined_certificate(None, info, term)
+        cert["source"] = source
+        meta = {"searched_parcel_id": term, "certificate_reference": "R1", "generated_display": "x"}
+        return render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
+
+    def test_party_matches_say_so_and_carry_the_name_caution(self):
+        html = self._html("Mary Kaittany", "elc", litigation="parties")
+        self.assertIn("is named as a party in Environment and Land Court proceedings", html)
+        self.assertIn("matches party names only", html)
+        # an identifier match carries neither
+        html = self._html("209/11642", "elc", litigation="identifier")
+        self.assertIn("This property is named in Environment and Land Court proceedings", html)
+        self.assertNotIn("matches party names only", html)
+
+    def test_the_banner_shows_the_true_total_and_a_truncation_note(self):
+        html = self._html("John Kamau", "elc", litigation="parties", total=88, truncated=True)
+        self.assertIn('<div class="n">88</div>', html)
+        self.assertIn("most recent of 88 cases that name", html)
+
+    def test_a_long_outcome_is_printed_across_the_row_not_in_the_narrow_column(self):
+        long_text = "a declaration is hereby issued that the Plaintiff is the lawful proprietor " * 6
+        html = self._html("209/11642", "elc", litigation="identifier", outcome=long_text)
+        self.assertEqual(html.count(long_text.strip()), 1)          # printed once, in full
+        self.assertIn("Outcome: " + long_text.strip()[:30], html)  # in the full-width detail row
+        short = self._html("209/11642", "elc", litigation="identifier", outcome="Dismissed")
+        self.assertNotIn("Outcome: Dismissed", short)             # a short outcome stays in its cell
+
+    def test_ndungu_statement_keeps_the_prd_wording_for_parcels_and_quotes_names(self):
+        self.assertIn("against parcel 2/267", services.build_nil_certificate("2/267")["legal_statement"])
+        self.assertIn("against “Mary Kaittany”",
+                      services.build_nil_certificate("mary kaittany")["legal_statement"])
+
+    def test_elc_section_exposes_basis_total_and_the_index_date(self):
+        info = {"disclaimer": "d", "match_basis": "parties", "total": 4, "truncated": False,
+                "matches": [{"case_citation": "x"}]}
+        elc = services.build_combined_certificate(None, info, "Mary Kaittany")["elc"]
+        self.assertEqual((elc["match_basis"], elc["total"]), ("parties", 4))
+        self.assertIn("index_as_of", elc)

@@ -3,6 +3,16 @@ import re
 from django.db import models
 
 
+def is_parcel_like(term):
+    """A parcel / LR number (digits plus a slash, or only a couple of words) as
+    opposed to a name, entity or place. Empty counts as parcel-like (no subject)."""
+    import re
+
+    t = (term or "").strip()
+    words = [w for w in re.split(r"[^A-Za-z]+", t) if w]
+    return (not t) or bool(re.search(r"\d", t) and ("/" in t or len(words) <= 3))
+
+
 def normalize_parcel_id(value: str) -> str:
     """Normalize a Parcel ID / LR number for exact matching.
 

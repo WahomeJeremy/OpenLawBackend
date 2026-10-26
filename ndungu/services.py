@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.db.models import Q
 
-from .models import CertificateLog, Finding, Parcel, normalize_parcel_id
+from .models import CertificateLog, Finding, Parcel, is_parcel_like, normalize_parcel_id
 
 EAT = timezone(timedelta(hours=3))  # East Africa Time (UTC+3)
 
@@ -413,9 +413,14 @@ def build_combined_certificate(parcel, litigation_info, shown_id, ndungu_suggest
 
     elc_section = (
         {"found": True, "matches": litigation_info["matches"],
-         "disclaimer": litigation_info["disclaimer"]} if elc_found else
+         "disclaimer": litigation_info["disclaimer"],
+         "match_basis": litigation_info.get("match_basis", "identifier"),
+         "total": litigation_info.get("total", len(litigation_info["matches"])),
+         "truncated": litigation_info.get("truncated", False)} if elc_found else
         {"found": False, "nil_statement": elc_nil_statement(overview_parcel)}
     )
+    # When the ELC index was last refreshed (the modal's disclaimer dates it, not the search).
+    elc_section["index_as_of"] = elc_index_stats()["as_of"]
 
     return {
         "status": overall_status,
@@ -430,6 +435,14 @@ def build_combined_certificate(parcel, litigation_info, shown_id, ndungu_suggest
     }
 
 
+def _statement_target(searched_id):
+    """'parcel 2/267' for a parcel number (the PRD's fixed wording is unchanged for
+    those); a name, entity or place is quoted instead of being called a parcel."""
+    if is_parcel_like(searched_id):
+        return f"parcel {searched_id}"
+    return search_subject(display_term(searched_id))["ref"]
+
+
 def build_nil_certificate(searched_id):
     """NIL certificate with the PRD 3.1 mandatory legal phrasing."""
     date_str = f"{now_eat():%d/%m/%Y}"
@@ -442,7 +455,7 @@ def build_nil_certificate(searched_id):
         },
         "legal_statement": (
             f"No encumbrance recorded in the NDUNGU REPORT (Volume I-III) "
-            f"as at {date_str} against parcel {searched_id}"
+            f"as at {date_str} against {_statement_target(searched_id)}"
         ),
         "search_scope": scope_statement(),
         "disclaimer": DISCLAIMER,
@@ -545,9 +558,23 @@ def elc_rows(matches):
             "neutral": neutral,
             "county": m.get("county") or (m.get("court_station") or "").title(),
             "decision_date": m.get("judgment_date", ""),  # already tidied by litigation.services
+            "outcome_long": len((m.get("outcome_status") or "").strip()) > LONG_OUTCOME,
+            "outcome_lead": _outcome_lead(m.get("outcome_status")),
             "source_display": re.sub(r"^https?://", "", m.get("url_link") or ""),
         })
     return rows
+
+
+# A long outcome would wrap into a very tall sliver in the narrow table column, so
+# the column shows a short lead and the full text is printed across the row below.
+LONG_OUTCOME = 140
+
+
+def _outcome_lead(text, width=70):
+    text = " ".join((text or "").split())
+    if len(text) <= width:
+        return text
+    return text[:width].rsplit(" ", 1)[0].rstrip(",;:.") + "\u2026"
 
 
 def contact_links(reference, topic):
@@ -605,11 +632,7 @@ def _ensure_fontconfig():
     os.environ["FONTCONFIG_FILE"] = conf
 
 
-def _parcel_like(t):
-    """A parcel / LR number (has digits and a slash or only a couple of words)
-    as opposed to a name, entity or place."""
-    words = [w for w in re.split(r"[^A-Za-z]+", t) if w]
-    return (not t) or bool(re.search(r"\d", t) and ("/" in t or len(words) <= 3))
+_parcel_like = is_parcel_like
 
 
 _SMALL_WORDS = {"of", "and", "the", "for", "in", "on", "at", "to"}
@@ -702,6 +725,7 @@ def build_pdf_context(cert, meta):
     }
     if source == "elc":
         ctx["elc_rows"] = elc_rows(cert["elc"].get("matches", []))
+        ctx["elc_total"] = cert["elc"].get("total", len(cert["elc"].get("matches", [])))
         ctx["index"] = elc_index_stats()
         ctx["links"] = contact_links(ref, "request a manual review")
     elif cert["ndungu"]["found"]:

@@ -157,6 +157,7 @@
   .nil { border: 0.8pt solid #9AA3B5; padding: 10.5pt 12pt; text-align: center; color: #3B4257; }
 
 
+  .section.disc { page-break-inside: avoid; break-inside: avoid; }
   ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
   ol.disclaimer li { margin-bottom: 4.5pt; }
   .elc .disc h2.sec { margin-bottom: 8.9pt; }
@@ -230,9 +231,9 @@
         <td class="body">
           <div class="eyebrow">Search result</div>
           <div class="t sentence">Litigation found</div>
-          <div class="s">{{ subject.lead }} is named in Environment and Land Court proceedings on record.</div>
+          <div class="s">{{ subject.lead }} is named {% if cert.elc.match_basis == 'parties' %}as a party {% endif %}in Environment and Land Court proceedings on record.</div>
         </td>
-        <td class="count"><div class="in"><div class="n">{{ cert.elc.matches|length }}</div><div class="c">{{ cert.elc.matches|length|pluralize:"Case,Cases" }}</div></div></td>
+        <td class="count"><div class="in"><div class="n">{{ elc_total }}</div><div class="c">{{ elc_total|pluralize:"Case,Cases" }}</div></div></td>
       </tr></table>
 
       <div class="section">
@@ -246,12 +247,13 @@
               <td>{{ m.title }}{% if m.neutral %}<br><span class="neutral">{{ m.neutral }}</span>{% endif %}</td>
               <td>{{ m.county|default:"—" }}</td>
               <td>{{ m.action|default:"—" }}{% if m.decision_date %}<br>{{ m.decision_date }}{% endif %}</td>
-              <td>{{ m.outcome_status|default:"—" }}</td>
+              <td>{% if m.outcome_long %}{{ m.outcome_lead }}{% else %}{{ m.outcome_status|default:"—" }}{% endif %}</td>
             </tr>
-            {% if m.parties or m.url_link %}
+            {% if m.parties or m.url_link or m.outcome_long %}
             <tr>
               <td></td>
               <td colspan="4" class="detail">
+                {% if m.outcome_long %}<div>Outcome: {{ m.outcome_status }}</div>{% endif %}
                 {% if m.parties %}<div>Parties: {{ m.parties }}</div>{% endif %}
                 {% if m.url_link %}<div>Source: <a href="{{ m.url_link }}">{{ m.source_display }}</a></div>{% endif %}
               </td>
@@ -260,6 +262,7 @@
           </tbody>
           {% endfor %}
         </table>
+        {% if cert.elc.truncated %}<p class="scope">Showing the {{ cert.elc.matches|length }} most recent of {{ elc_total }} cases that name {{ subject.ref }}.</p>{% endif %}
         {% if cert.review %}<p class="scope">Confirmed by Landledger manual review (ref. {{ cert.review.review_reference }}, {{ cert.review.reviewed_display }}).</p>{% endif %}
       </div>
     {% else %}
@@ -291,6 +294,7 @@
       <ol class="disclaimer">
         <li>1. Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd{% if index.as_of %} as of {{ index.as_of }}{% endif %}.</li>
         <li>2. This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
+        {% if cert.elc.match_basis == 'parties' %}<li>3. This result matches party names only. Different people or entities can share a name; confirm that each case concerns the party you mean.</li>{% endif %}
       </ol>
     </div>
 

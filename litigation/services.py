@@ -15,7 +15,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from ndungu.models import normalize_parcel_id
+from ndungu.models import is_parcel_like, normalize_parcel_id
 
 from .models import ElcCase, ElcCaseIdentifier, ManualReviewRequest
 
@@ -59,22 +59,27 @@ DISCLAIMER = (
 )
 
 
-# An identifier column is meant to hold ONE parcel per ';'-separated item, but some
-# cells list dozens of parcels with commas instead. Such an oversized item is not one
-# identifier (it can never match a search, and it overflows the 255-character column
-# on PostgreSQL), so the individual parcel numbers are pulled out of it.
+# An identifier column is meant to hold ONE parcel per ';'-separated item, but many
+# cells list several parcels joined with commas, "and" or "&" instead. Stored whole,
+# such an item can never match a search (and a long one overflows the 255-character
+# column on PostgreSQL), so the individual parcel numbers are pulled out of it.
 MAX_IDENTIFIER_LEN = 255
+_SEPARATOR = re.compile(r",|\band\b|&", re.I)
 _PARCEL_NUMBER = re.compile(
-    r"(?:[A-Za-z]+/)*Block\s+\d+/\d+"   # Nairobi/Block 37/283
-    r"|\d+(?:\s*/\s*\d+)+"              # 97/5262, 209/6002/7, 97/ 5264
-    r"|\b\d{4,}\b"                       # a plain LR number: 12826
+    r"(?:[A-Za-z]+\s*[/ ]\s*)?Block\s*\d+(?:\s*/\s*\d+)+"                           # Nairobi/Block 37/283, Nairobi Block 37/283
+    r"|[A-Za-z]{3,}(?:\s*/\s*[A-Za-z]{3,})+\s*/\s*\d+[A-Za-z]?"                         # Ngong/Ngong/1445
+    r"|\d+[A-Za-z]?(?:\s*/\s*(?:\d+[A-Za-z]?|[IVX]{1,5}))+"                            # 97/5262, 209/6002/7, 36/VII/637
+    r"|\b\d{4,}\b"                                                                      # a plain LR number: 12826
 )
 
 
-def _expand_oversized(piece):
+def _expand_multi(piece):
+    """Individual parcel numbers found in a multi-parcel (or oversized) cell item."""
     seen, out = set(), []
     for m in _PARCEL_NUMBER.finditer(piece):
         token = re.sub(r"\s*/\s*", "/", re.sub(r"\s+", " ", m.group(0))).strip()  # "97/ 5264" -> "97/5264"
+        token = re.sub(r"^([A-Za-z]+)\s+(Block)", r"\1/\2", token)             # "Nairobi Block" -> "Nairobi/Block"
+        token = re.sub(r"Block(?=\d)", "Block ", token)                          # "Block126/749" -> "Block 126/749"
         if token not in seen and len(token) <= MAX_IDENTIFIER_LEN:
             seen.add(token)
             out.append(token)
@@ -89,12 +94,15 @@ def split_identifiers(raw_cell):
         piece = piece.strip().strip('"').strip()
         if not piece or _NONE_RE.match(piece):
             continue
-        if len(piece) > MAX_IDENTIFIER_LEN:
-            for token in _expand_oversized(piece):
-                normalized = normalize_parcel_id(token)
-                if normalized:
-                    out.append((token, normalized))
-            continue
+        if len(piece) > MAX_IDENTIFIER_LEN or _SEPARATOR.search(piece):
+            tokens = _expand_multi(piece)
+            if tokens or len(piece) > MAX_IDENTIFIER_LEN:
+                for token in tokens:
+                    normalized = normalize_parcel_id(token)
+                    if normalized:
+                        out.append((token, normalized))
+                continue
+            # a separator but no recognisable parcel number: keep the item as written
         # Some cells stack labels ("L.R No. Number 12337/6") -- strip
         # leading labels repeatedly until nothing more comes off.
         cleaned = piece
@@ -151,10 +159,59 @@ def _citation_payload(case, matched_identifier=""):
     }
 
 
+# Name search: how many cases one name search will list, and which words don't count.
+MAX_NAME_MATCHES = 25
+_NAME_STOPWORDS = {"the", "of", "and", "for", "in", "on", "at", "to", "ltd", "limited", "co", "company", "inc"}
+
+
+def _name_tokens(term):
+    tokens = [t for t in re.split(r"[^a-z0-9']+", (term or "").lower()) if len(t) >= 2 and t not in _NAME_STOPWORDS]
+    # a lone word must be a real word: 'nssf' or 'karura' yes, 'ab' no
+    return tokens if tokens and (len(tokens) > 1 or len(tokens[0]) >= 4) else []
+
+
+def _case_names_party(case, tokens):
+    """True when ONE party of the case contains every word (so 'Mary' in one party
+    and 'Kaittany' in another does not count)."""
+    parties = [p.lower() for p in re.split(r";", case.parties or "") if p.strip()]
+    if not parties:  # no parties recorded: use the two sides of the case title
+        title = re.split(r"\[\d{4}\]", case.case_citation)[0]
+        parties = [p.lower() for p in re.split(r"\s+v\s+|;|&", title) if p.strip()]
+    return any(all(t in p for t in tokens) for p in parties)
+
+
+def _find_by_party(raw_query):
+    """Cases in which one party's name contains EVERY word of a typed name.
+
+    Matching is by name only, so it can pick up a different person who shares it;
+    the payload says so (`match_basis`) and the certificate repeats the caution."""
+    tokens = _name_tokens(raw_query)
+    if not tokens:
+        return None
+    from django.db.models import Q
+
+    qs = ElcCase.objects.all()
+    for t in tokens:
+        qs = qs.filter(Q(parties__icontains=t) | Q(case_citation__icontains=t))
+    hits = [c for c in qs.order_by("-synced_at")[:3000] if _case_names_party(c, tokens)]
+    if not hits:
+        return None
+    return {
+        "disclaimer": DISCLAIMER,
+        "matches": [_citation_payload(c) for c in hits[:MAX_NAME_MATCHES]],
+        "match_basis": "parties",
+        "total": len(hits),
+        "truncated": len(hits) > MAX_NAME_MATCHES,
+    }
+
+
 def find_litigation(raw_query):
-    """Search ELC cases citing this parcel (exact normalized match on any of
-    its listed identifiers). Returns a payload dict with `matches` +
-    `disclaimer`, or None if nothing matched."""
+    """Search ELC cases for this search term.
+
+    A parcel number is matched exactly against each case's listed identifiers. A
+    name or entity that matches no identifier is matched against the cases'
+    parties. Returns a payload dict (`matches`, `disclaimer`, `match_basis`,
+    `total`, `truncated`), or None if nothing matched."""
     q = normalize_parcel_id(raw_query)
     if not q:
         return None
@@ -169,9 +226,12 @@ def find_litigation(raw_query):
         ident = next((i.raw_identifier for i in c.identifiers.all()
                       if i.normalized_identifier == q), "")
         matches.append(_citation_payload(c, ident))
-    if not matches:
-        return None
-    return {"disclaimer": DISCLAIMER, "matches": matches}
+    if matches:
+        return {"disclaimer": DISCLAIMER, "matches": matches, "match_basis": "identifier",
+                "total": len(matches), "truncated": False}
+    if not is_parcel_like(raw_query):
+        return _find_by_party(raw_query)
+    return None
 
 
 # --------------------------------------------------------------------------- #
