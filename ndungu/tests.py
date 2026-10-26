@@ -359,9 +359,10 @@ class SourceAwareTests(TestCase):
 
     def test_elc_nil_without_review_says_so_and_does_not_tell_the_reader_to_act(self):
         html = self._html("77/7", "elc")
-        # Definitive and tied to the index (a count), with no repeated timestamp
+        # Definitive and tied to the index, with no repeated timestamp, no count
         # and no hedge about a review that hasn't happened.
-        self.assertIn("decisions indexed by Landledger Ltd names this property", html)
+        self.assertIn("No Environment and Land Court case in the decisions indexed by Landledger Ltd names this property", html)
+        self.assertNotRegex(html, r"among the [0-9,]+ decisions")
         self.assertNotIn("Not confirmed by manual review", html)
         self.assertNotIn("Basis of this result", html)
         self.assertNotIn("as at ", html)
