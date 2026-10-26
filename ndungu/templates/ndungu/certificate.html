@@ -162,12 +162,13 @@
   .elc .disc h2.sec { margin-bottom: 8.9pt; }
 
   /* ---- LR conversion reference ---- */
-  .conv-box { border: 0.8pt solid #9AA3B5; padding: 9pt 11pt; margin-bottom: 14pt; font-size: 9.75pt;
-    page-break-inside: avoid; break-inside: avoid; }
-  .conv-heading { margin: 0 0 3pt; font-size: 9pt; letter-spacing: 0.7pt; text-transform: uppercase; color: #4A5468; }
-  .conv-lr, .conv-detail, .conv-cite { margin: 1pt 0 0; }
-  .conv-detail, .conv-cite { color: #3B4257; font-size: 9pt; }
-  .conv-match-rule { border-top: 0.5pt solid #D3D8E4; margin-top: 7pt; padding-top: 7pt; }
+  .conv { margin: 0 0 16pt; page-break-inside: avoid; break-inside: avoid; }
+  .conv-heading { margin: 0 0 9pt; padding-bottom: 5pt; border-bottom: 0.7pt solid #1F2A44;
+    font-size: 9pt; line-height: 12pt; letter-spacing: 0.9pt; text-transform: uppercase; color: #4A5468; }
+  .conv-match { margin: 0; }
+  .conv-match + .conv-match { margin-top: 10pt; }
+  .conv-lr { margin: 0; line-height: 15pt; color: #1C1F29; }
+  .conv-detail, .conv-cite { margin: 3pt 0 0; font-size: 9pt; line-height: 13.5pt; color: #3B4257; }
 </style>
 </head>
 <body class="{% if cert.source == 'elc' %}elc{% endif %}">
@@ -213,10 +214,10 @@
   {% endif %}
 
   {% if cert.conversion_info %}
-    <div class="conv-box">
+    <div class="conv">
+      <p class="conv-heading">LR number conversion &mdash; reference data</p>
       {% for m in cert.conversion_info.matches %}
-        <div class="{% if not forloop.first %}conv-match-rule{% endif %}">
-          <p class="conv-heading">LR number conversion &mdash; reference data</p>
+        <div class="conv-match">
           <p class="conv-lr">{{ m.old_lr_no }} &rarr; {{ m.new_lr_number }}</p>
           <p class="conv-detail">
             {% if m.scheme_name %}Scheme: {{ m.scheme_name }}{% endif %}
