@@ -597,6 +597,22 @@ def _ensure_fontconfig():
     os.environ["FONTCONFIG_FILE"] = conf
 
 
+def search_subject(term):
+    """How a certificate refers to what was searched.
+
+    A parcel / LR number reads as 'this property'; a name, entity or location
+    can't be called a property, so it is quoted back instead ("Gospel Revival
+    Centre"). 'lead' is the sentence-initial form."""
+    t = re.sub(r"\s+", " ", (term or "").strip())
+    words = [w for w in re.split(r"[^A-Za-z]+", t) if w]
+    parcel_like = (not t) or (re.search(r"\d", t) and ("/" in t or len(words) <= 3))
+    if parcel_like:
+        return {"ref": "this property", "lead": "This property", "kind": "property"}
+    shown = t if len(t) <= 60 else t[:57].rstrip() + "\u2026"
+    quoted = f"\u201c{shown}\u201d"
+    return {"ref": quoted, "lead": quoted, "kind": "name"}
+
+
 def conversion_blocks(info):
     """LR-conversion matches as label/value fields in rows of two, mirroring the
     Parcel Summary layout. Missing optional fields are skipped, not shown as dashes."""
@@ -643,6 +659,7 @@ def build_pdf_context(cert, meta):
         "qr": qr_data_uri(meta.get("verify_url", "")),
         "font_dir": (Path(settings.BASE_DIR) / "ndungu" / "assets" / "fonts").as_uri(),
         "conv_blocks": conversion_blocks(cert.get("conversion_info")),
+        "subject": search_subject(meta.get("searched_parcel_id")),
     }
     if source == "elc":
         ctx["elc_rows"] = elc_rows(cert["elc"].get("matches", []))

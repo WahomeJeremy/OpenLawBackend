@@ -546,3 +546,47 @@ class ConversionBlockTests(TestCase):
             html = render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
             for text in ("LR number conversion", "Old LR number", "NAIROBI/BLOCK 30/32", "LOWER HILL", "Gazetted"):
                 self.assertIn(text, html, f"{text!r} missing on the {source} certificate")
+
+
+class SearchSubjectTests(TestCase):
+    """Certificates must not call a person, company or place a 'property'."""
+
+    def test_parcel_numbers_read_as_this_property(self):
+        for term in ("209/11642", "LR No. 3589/6", "Title LR Ngong/Ngong/10915", "Ondiri 24", "Ondiri24", "", None):
+            self.assertEqual(services.search_subject(term)["ref"], "this property", term)
+
+    def test_names_entities_and_places_are_quoted_back(self):
+        for term in ("Gospel Revival Centre", "Mary Wamatha Kaittany", "Karura", "NSSF"):
+            subj = services.search_subject(term)
+            self.assertEqual(subj["ref"], f"\u201c{term}\u201d")
+            self.assertEqual(subj["kind"], "name")
+
+    def test_long_terms_are_shortened(self):
+        subj = services.search_subject("A" * 90)
+        self.assertLessEqual(len(subj["ref"]), 64)
+        self.assertIn("\u2026", subj["ref"])
+
+    def _html(self, term, source, found=False):
+        from django.template.loader import render_to_string
+
+        cert = services.build_combined_certificate(None, {"disclaimer": "d", "matches": [
+            {"case_citation": "A v B [2020] KEELC 1 (KLR)"}]} if found else None, term)
+        cert["source"] = source
+        meta = {"searched_parcel_id": term, "certificate_reference": "R1", "generated_display": "x"}
+        return render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
+
+    def test_no_record_statements_follow_what_was_searched(self):
+        name = self._html("Gospel Revival Centre", "elc")
+        self.assertIn("names \u201cGospel Revival Centre\u201d.", name)
+        self.assertIn("no case recorded against \u201cGospel Revival Centre\u201d", name)
+        self.assertNotIn("this property", name)
+        parcel = self._html("77/7", "elc")
+        self.assertIn("names this property.", parcel)
+        self.assertIn("no case recorded against this property", parcel)
+
+    def test_found_banner_and_ndungu_callout_follow_what_was_searched(self):
+        self.assertIn("\u201cGospel Revival Centre\u201d is named in Environment and Land Court proceedings",
+                      self._html("Gospel Revival Centre", "elc", found=True))
+        self.assertIn("This property is named in", self._html("77/7", "elc", found=True))
+        self.assertIn("in respect of \u201cKaittany\u201d by running a", self._html("Kaittany", "ndungu"))
+        self.assertIn("in respect of this property by running a", self._html("77/7", "ndungu"))
