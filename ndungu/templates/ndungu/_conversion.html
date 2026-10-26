@@ -1,6 +1,6 @@
   {% if conv_blocks %}
     <div class="conv">
-      <p class="conv-heading">LR number conversion &mdash; reference data</p>
+      <p class="conv-heading"><span>LR number conversion &mdash; reference data</span></p>
       {% for block in conv_blocks %}
         {% if conv_blocks|length > 1 %}<p class="conv-count">Conversion {{ forloop.counter }} of {{ conv_blocks|length }}</p>{% endif %}
         <table class="cg">

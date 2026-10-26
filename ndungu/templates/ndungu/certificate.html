@@ -165,8 +165,10 @@
   /* LR conversion: same label/value grid as the parcel summary, unboxed, hairlines only */
   .conv { margin: 0 0 16pt; page-break-inside: avoid; break-inside: avoid; }
   .conv-heading { page-break-after: avoid; break-after: avoid; }
-  .conv-heading { margin: 0 0 8pt; padding-bottom: 5pt; border-bottom: 0.7pt solid #1F2A44;
-    font-size: 9pt; line-height: 12pt; letter-spacing: 0.9pt; text-transform: uppercase; color: #4A5468; }
+  .conv-heading { margin: 0 0 9pt; font-size: 9pt; line-height: 12pt; letter-spacing: 0.9pt;
+    text-transform: uppercase; color: #4A5468; }
+  /* faint gold, only as wide as the heading text */
+  .conv-heading span { display: inline-block; padding-bottom: 4pt; border-bottom: 0.7pt solid rgba(201, 162, 39, 0.55); }
   .conv-count { margin: 10pt 0 2pt; font-size: 9pt; letter-spacing: 0.7pt; text-transform: uppercase; color: #4A5468; }
   table.cg { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
   table.cg td { width: 50%; vertical-align: top; padding: 0 0 7pt; }
