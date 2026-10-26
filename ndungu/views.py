@@ -64,6 +64,20 @@ class SearchView(APIView):
         conversion_info = find_conversions(q)
         litigation_info = find_litigation(q)
 
+        if result["match_type"] in ("suggestions", "multiple") and source == "elc":
+            # One journey, one dataset: an ELC search never opens Ndung'u suggestions.
+            # The term is looked up in the ELC index only; the Ndung'u matches are
+            # reported as a count so the result can offer to switch.
+            combined = build_combined_certificate(
+                None, litigation_info, q, ndungu_suggestions=len(result["parcels"]))
+            shown = combined["overview"]["parcel"]
+            ref = log_search(shown, normalized, 0, source_status(combined, source),
+                             None, dataset_source=source)
+            combined["metadata"] = _metadata(request, shown, ref)
+            if conversion_info:
+                combined["conversion_info"] = conversion_info
+            return Response(combined)
+
         if result["match_type"] in ("suggestions", "multiple"):
             ref = log_search(q, normalized, len(result["parcels"]), "suggestions",
                              dataset_source=source)

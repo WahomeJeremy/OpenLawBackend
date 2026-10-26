@@ -645,3 +645,49 @@ class CertificateMetadataTests(TestCase):
         meta = self._meta(parcel_id="narrative::x", searched_term="kenya ports authority")
         self.assertEqual(meta["searched_parcel_id"], "Kenya Ports Authority")
         self.assertNotIn("matched_parcel_id", meta)
+
+
+class JourneysDoNotMixTests(TestCase):
+    """An ELC search stays in the ELC journey; a Ndung'u search stays in Ndung'u."""
+
+    def setUp(self):
+        self.p = make_parcel("11927/8", display="11927/8")
+        make_finding(self.p, "r1", current_holder="Mary Wamatha Kaittany", prior_party="Mary Wamatha Kaittany")
+
+    def _get(self, source, q="Mary Kaittany"):
+        return self.client.get("/api/ndungu/search/", {"q": q, "source": source}).json()
+
+    def test_ndungu_search_by_name_opens_ndungu_suggestions(self):
+        data = self._get("ndungu")
+        self.assertEqual(data["status"], "suggestions")
+        self.assertTrue(data["suggestions"])
+
+    def test_elc_search_by_name_never_returns_ndungu_suggestions(self):
+        data = self._get("elc")
+        self.assertNotEqual(data["status"], "suggestions")
+        self.assertNotIn("suggestions", data)
+        self.assertFalse(data["elc"]["found"])          # an ELC result...
+        self.assertEqual(data["ndungu"]["suggestions"], 1)  # ...that only counts the Ndung'u matches
+        self.assertNotIn("tier_b_timeline", data["ndungu"])  # and carries none of their data
+
+    def test_elc_name_search_is_logged_as_an_elc_certificate(self):
+        data = self._get("elc")
+        log = CertificateLog.objects.get(certificate_reference=data["metadata"]["certificate_reference"])
+        self.assertEqual((log.dataset_source, log.status), ("elc", "no_encumbrance"))
+
+    def test_elc_name_search_with_no_ndungu_match_has_no_hint(self):
+        data = self._get("elc", q="Zzyzx Nobody")
+        self.assertNotIn("suggestions", data["ndungu"])
+
+    def test_exact_parcel_search_is_unchanged_in_both_modes(self):
+        for source in ("ndungu", "elc"):
+            data = self._get(source, q="11927/8")
+            self.assertTrue(data["ndungu"]["found"], source)
+
+
+class ElcNilStatementTests(TestCase):
+    def test_parcels_stay_parcels_and_names_are_quoted(self):
+        self.assertEqual(services.elc_nil_statement("209/11642"),
+                         "No ELC litigation case recorded against parcel 209/11642.")
+        self.assertEqual(services.elc_nil_statement("mary kaittany"),
+                         "No ELC litigation case recorded against \u201cMary Kaittany\u201d.")

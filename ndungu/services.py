@@ -351,7 +351,11 @@ def build_certificate(parcel, searched_id):
 
 
 def elc_nil_statement(searched_id):
-    return f"No ELC litigation case recorded against parcel {searched_id}."
+    # 'parcel 209/11642' for a parcel number; the name itself for a person,
+    # company or place ("Mary Kaittany" is not a parcel).
+    subject = search_subject(display_term(searched_id))
+    target = f"parcel {searched_id}" if subject["kind"] == "property" else subject["ref"]
+    return f"No ELC litigation case recorded against {target}."
 
 
 def _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info):
@@ -366,7 +370,7 @@ def _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info):
     return " · ".join(parts)
 
 
-def build_combined_certificate(parcel, litigation_info, shown_id):
+def build_combined_certificate(parcel, litigation_info, shown_id, ndungu_suggestions=0):
     """Combine a (possibly absent) Ndung'u match with (possibly absent) ELC
     litigation into ONE certificate payload -- our encumbrance verdict is now
     Ndung'u OR ELC (LR conversion stays separate, pure reference data).
@@ -401,6 +405,11 @@ def build_combined_certificate(parcel, litigation_info, shown_id):
             "legal_statement": nil["legal_statement"],
             "search_scope": nil["search_scope"],
         }
+        if ndungu_suggestions:
+            # The term matches several Ndung'u records (e.g. a name). They are not
+            # shown on this journey -- only counted, so the ELC result can point
+            # the user to them.
+            ndungu_section["suggestions"] = ndungu_suggestions
 
     elc_section = (
         {"found": True, "matches": litigation_info["matches"],
