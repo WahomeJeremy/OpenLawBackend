@@ -559,7 +559,6 @@ def contact_links(reference, topic):
     return {
         "email": f"mailto:{getattr(settings, 'SUPPORT_EMAIL', '')}?subject={quote('Certificate ' + reference)}",
         "whatsapp": f"{wa}{'&' if '?' in wa else '?'}text={msg}",
-        "form": getattr(settings, "CERTIFICATE_REQUEST_FORM_URL", ""),
         "site": getattr(settings, "CERTIFICATE_SITE_URL", "https://legal.ke"),
     }
 

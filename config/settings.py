@@ -191,5 +191,4 @@ SUPPORT_EMAIL = config('SUPPORT_EMAIL', default='support@legal.ke')
 
 # Contact points printed on certificates ("via Email, WhatsApp or this Form").
 CERTIFICATE_WHATSAPP_URL = config('CERTIFICATE_WHATSAPP_URL', default='https://wa.me/254733887188')
-CERTIFICATE_REQUEST_FORM_URL = config('CERTIFICATE_REQUEST_FORM_URL', default='https://legal.ke')
 CERTIFICATE_SITE_URL = config('CERTIFICATE_SITE_URL', default='https://legal.ke')
