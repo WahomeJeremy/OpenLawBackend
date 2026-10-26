@@ -157,6 +157,10 @@
   .nil { border: 0.8pt solid #9AA3B5; padding: 10.5pt 12pt; text-align: center; color: #3B4257; }
 
 
+  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
+  ol.disclaimer li { margin-bottom: 4.5pt; }
+  .elc .disc h2.sec { margin-bottom: 8.9pt; }
+
   /* ---- LR conversion reference ---- */
   .conv-box { border: 0.8pt solid #9AA3B5; padding: 9pt 11pt; margin-bottom: 14pt; font-size: 9.75pt;
     page-break-inside: avoid; break-inside: avoid; }
@@ -278,7 +282,7 @@
           {% if cert.review %}
           <div class="s">The parcel was located and indexed. On manual review, no Environment and Land Court case in the searched records names this property.</div>
           {% else %}
-          <div class="s">No Environment and Land Court case in the indexed records names this property as at {{ meta.generated_display }}.</div>
+          <div class="s">No Environment and Land Court case among the {{ index.count_display }} decisions indexed by Landledger Ltd names this property.</div>
           {% endif %}
         </td>
         <td class="count"><div class="in"><div class="n">0</div><div class="c">Cases</div></div></td>
@@ -287,9 +291,17 @@
       <div class="section">
         <h2 class="sec">Schedule of cases</h2>
         <div class="nil">Nil &mdash; no case recorded against this property in the searched records.</div>
-        <p class="scope">{% if cert.review %}Confirmed by Landledger manual review (ref. {{ cert.review.review_reference }}, {{ cert.review.reviewed_display }}).{% else %}Basis of this result: automated search of indexed decisions. Not confirmed by manual review.{% endif %}</p>
+        {% if cert.review %}<p class="scope">Confirmed by Landledger manual review (ref. {{ cert.review.review_reference }}, {{ cert.review.reviewed_display }}).</p>{% endif %}
       </div>
     {% endif %}
+
+    <div class="section disc">
+      <h2 class="sec">Disclaimer</h2>
+      <ol class="disclaimer">
+        <li>1. Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd{% if index.as_of %} as of {{ index.as_of }}{% endif %}.</li>
+        <li>2. This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
+      </ol>
+    </div>
 
   {% else %}
   {# ========================= Ndung'u Report ============================ #}

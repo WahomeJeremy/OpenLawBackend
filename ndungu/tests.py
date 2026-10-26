@@ -359,8 +359,12 @@ class SourceAwareTests(TestCase):
 
     def test_elc_nil_without_review_says_so_and_does_not_tell_the_reader_to_act(self):
         html = self._html("77/7", "elc")
-        self.assertIn("indexed records", html)
-        self.assertIn("Not confirmed by manual review", html)
+        # Definitive and tied to the index (a count), with no repeated timestamp
+        # and no hedge about a review that hasn't happened.
+        self.assertIn("decisions indexed by Landledger Ltd names this property", html)
+        self.assertNotIn("Not confirmed by manual review", html)
+        self.assertNotIn("Basis of this result", html)
+        self.assertNotIn("as at ", html)
         self.assertNotIn("request a manual review", html)
 
     def test_elc_nil_with_review_is_marked_confirmed(self):
@@ -376,6 +380,7 @@ class SourceAwareTests(TestCase):
         self.assertIn("Confirmed by Landledger manual review (ref. MR-20261023-ABC123, 23 Oct 2026)", html)
         self.assertIn("located and indexed", html)
         self.assertNotIn("Not confirmed by manual review", html)
+        self.assertNotIn("decisions indexed by Landledger Ltd names this property", html)
 
     def test_ndungu_nil_points_to_the_litigation_search(self):
         html = self._html("77/7", "ndungu")
@@ -454,3 +459,53 @@ class ImportNdunguTests(TestCase):
             aux_ids = [r["record_id"] for r in csv.DictReader(fh)]
         loaded = Finding.objects.filter(record_id__in=aux_ids).count()
         self.assertEqual(loaded, len(aux_ids))
+
+
+class ElcCertificateDisclaimerTests(TestCase):
+    """The ELC certificate closes with disclaimer points 1 and 3 (not the
+    manual-review pointer); the Ndung'u certificates carry none."""
+
+    def setUp(self):
+        from litigation.models import ElcCase, ElcCaseIdentifier
+
+        self.p = make_parcel("209/11642", display="209/11642")
+        make_finding(self.p, "r1")
+        case = ElcCase.objects.create(case_citation="ELC Case 7 of 2019", county="Nairobi")
+        ElcCaseIdentifier.objects.create(
+            case=case, raw_identifier="209/11642",
+            normalized_identifier=services.normalize_parcel_id("209/11642"),
+        )
+
+    def _html(self, q, source):
+        from django.template.loader import render_to_string
+        from litigation.services import find_litigation
+        from ndungu.services import build_combined_certificate, build_pdf_context
+
+        parcel = Parcel.objects.filter(parcel_id_clean=q).first()
+        cert = build_combined_certificate(parcel, find_litigation(q), q)
+        cert["source"] = source
+        meta = {"searched_parcel_id": q, "certificate_reference": "REF-1",
+                "generated_display": "26 Oct 2026, 10:17 EAT"}
+        return render_to_string("ndungu/certificate.html", build_pdf_context(cert, meta))
+
+    def test_both_elc_states_carry_disclaimers_one_and_three(self):
+        for q in ("209/11642", "77/7"):  # found, then nil
+            html = self._html(q, "elc")
+            self.assertIn("currently indexed by Landledger Ltd", html)
+            self.assertIn("does not replace, an official Lands Registry search", html)
+            self.assertNotIn("manual review by quoting", html)  # point 2 stays out
+
+    def test_disclaimer_dates_the_index_not_the_search(self):
+        html = self._html("77/7", "elc")
+        self.assertNotIn("as of 26 Oct 2026, 10:17 EAT", html)
+        self.assertIn("as of ", html)  # the index's last-updated date
+
+    def test_ndungu_certificates_carry_no_disclaimer(self):
+        for q in ("209/11642", "77/7"):
+            self.assertNotIn("Disclaimer", self._html(q, "ndungu"))
+
+    def test_index_stats_report_count_and_freshness(self):
+        stats = services.elc_index_stats()
+        self.assertEqual(stats["count"], 1)
+        self.assertEqual(stats["count_display"], "1")
+        self.assertRegex(stats["as_of"], r"^\d{2} [A-Z][a-z]{2} \d{4}$")

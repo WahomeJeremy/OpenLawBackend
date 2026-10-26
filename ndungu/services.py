@@ -597,6 +597,22 @@ def _ensure_fontconfig():
     os.environ["FONTCONFIG_FILE"] = conf
 
 
+def elc_index_stats():
+    """What the ELC certificate's 'indexed decisions' refers to: how many
+    decisions Landledger holds and when that index was last updated."""
+    from django.db.models import Count, Max
+
+    from litigation.models import ElcCase
+
+    agg = ElcCase.objects.aggregate(n=Count("id"), last=Max("synced_at"))
+    last = agg["last"]
+    return {
+        "count": agg["n"],
+        "count_display": f"{agg['n']:,}",
+        "as_of": f"{last.astimezone(EAT):%d %b %Y}" if last else "",
+    }
+
+
 def build_pdf_context(cert, meta):
     """Everything certificate.html needs beyond `cert` and `meta`."""
     from pathlib import Path
@@ -610,6 +626,7 @@ def build_pdf_context(cert, meta):
     }
     if source == "elc":
         ctx["elc_rows"] = elc_rows(cert["elc"].get("matches", []))
+        ctx["index"] = elc_index_stats()
         ctx["links"] = contact_links(ref, "request a manual review")
     elif cert["ndungu"]["found"]:
         ctx["pages_ref"] = report_pages(cert["ndungu"]["tier_b_timeline"])
