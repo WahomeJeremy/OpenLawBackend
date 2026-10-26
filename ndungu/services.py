@@ -597,6 +597,39 @@ def _ensure_fontconfig():
     os.environ["FONTCONFIG_FILE"] = conf
 
 
+def _parcel_like(t):
+    """A parcel / LR number (has digits and a slash or only a couple of words)
+    as opposed to a name, entity or place."""
+    words = [w for w in re.split(r"[^A-Za-z]+", t) if w]
+    return (not t) or bool(re.search(r"\d", t) and ("/" in t or len(words) <= 3))
+
+
+_SMALL_WORDS = {"of", "and", "the", "for", "in", "on", "at", "to"}
+
+
+def display_term(term):
+    """What the certificate prints as 'Searched'.
+
+    A name typed all-lowercase or all-UPPERCASE ('mary kaittany') reads in proper
+    case ('Mary Kaittany'); short all-caps tokens (NSSF, KPA) stay as acronyms.
+    Anything typed in mixed case, and every parcel / LR number, is left as typed."""
+    t = re.sub(r"\s+", " ", (term or "").strip())
+    if not t or _parcel_like(t) or not (t.islower() or t.isupper()):
+        return t
+    upper_input = t.isupper()
+
+    def word(w, first):
+        if upper_input and w.isalpha() and len(w) <= 4 and len(t.split()) == 1:
+            return w  # a lone short acronym such as NSSF
+        if not first and w.lower() in _SMALL_WORDS:
+            return w.lower()
+        out = w[:1].upper() + w[1:].lower()
+        return re.sub(r"(?<=\b\w')(\w)", lambda m: m.group(1).upper(), out)  # O'Brien, D'Souza
+
+    return " ".join("-".join(word(p, i == 0 and j == 0) for j, p in enumerate(tok.split("-")))
+                    for i, tok in enumerate(t.split(" ")))
+
+
 def search_subject(term):
     """How a certificate refers to what was searched.
 
@@ -604,9 +637,7 @@ def search_subject(term):
     can't be called a property, so it is quoted back instead ("Gospel Revival
     Centre"). 'lead' is the sentence-initial form."""
     t = re.sub(r"\s+", " ", (term or "").strip())
-    words = [w for w in re.split(r"[^A-Za-z]+", t) if w]
-    parcel_like = (not t) or (re.search(r"\d", t) and ("/" in t or len(words) <= 3))
-    if parcel_like:
+    if _parcel_like(t):
         return {"ref": "this property", "lead": "This property", "kind": "property"}
     shown = t if len(t) <= 60 else t[:57].rstrip() + "\u2026"
     quoted = f"\u201c{shown}\u201d"

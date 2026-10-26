@@ -590,3 +590,58 @@ class SearchSubjectTests(TestCase):
         self.assertIn("This property is named in", self._html("77/7", "elc", found=True))
         self.assertIn("in respect of \u201cKaittany\u201d by running a", self._html("Kaittany", "ndungu"))
         self.assertIn("in respect of this property by running a", self._html("77/7", "ndungu"))
+
+
+class DisplayTermTests(TestCase):
+    def test_names_typed_in_one_case_read_in_proper_case(self):
+        for typed, shown in [
+            ("mary kaittany", "Mary Kaittany"),
+            ("MARY KAITTANY", "Mary Kaittany"),
+            ("gospel revival centre", "Gospel Revival Centre"),
+            ("ministry of lands and settlement", "Ministry of Lands and Settlement"),
+            ("jean-paul wamatha", "Jean-Paul Wamatha"),
+            ("o'brien holdings", "O'Brien Holdings"),
+            ("  mary   kaittany ", "Mary Kaittany"),
+        ]:
+            self.assertEqual(services.display_term(typed), shown, typed)
+
+    def test_acronyms_mixed_case_and_parcel_numbers_are_left_alone(self):
+        for typed in ("NSSF", "KPA", "McDonald Holdings", "Mary Wamatha Kaittany", "209/11642",
+                      "LR No. 3589/6", "Ondiri24", "Ngong/Ngong/10915"):
+            self.assertEqual(services.display_term(typed), typed, typed)
+
+    def test_empty_is_empty(self):
+        self.assertEqual(services.display_term(""), "")
+        self.assertEqual(services.display_term(None), "")
+
+
+class CertificateMetadataTests(TestCase):
+    """'Searched' reads in proper case; 'Matched' names the record we resolved to."""
+
+    def setUp(self):
+        self.p = make_parcel("11927/8", display="11927/8")
+        make_finding(self.p, "r1")
+
+    def _meta(self, **data):
+        with patch("ndungu.views.render_certificate_pdf", return_value=b"%PDF") as mock_render:
+            self.client.post("/api/ndungu/certificate/", data={"source": "ndungu", **data},
+                             content_type="application/json")
+        return mock_render.call_args[0][1]
+
+    def test_name_search_shows_proper_case_searched_and_the_matched_parcel(self):
+        meta = self._meta(parcel_id="11927/8", searched_term="mary kaittany")
+        self.assertEqual(meta["searched_parcel_id"], "Mary Kaittany")
+        self.assertEqual(meta["matched_parcel_id"], "11927/8")
+
+    def test_direct_parcel_search_has_no_matched(self):
+        meta = self._meta(parcel_id="11927/8", searched_term="11927/8")
+        self.assertEqual(meta["searched_parcel_id"], "11927/8")
+        self.assertNotIn("matched_parcel_id", meta)
+
+    def test_matched_is_not_repeated_when_only_the_case_differs(self):
+        # a name that resolves to a record carrying that same name
+        parcel = make_parcel("narrative::x", display="Kenya Ports Authority")
+        make_finding(parcel, "r2")
+        meta = self._meta(parcel_id="narrative::x", searched_term="kenya ports authority")
+        self.assertEqual(meta["searched_parcel_id"], "Kenya Ports Authority")
+        self.assertNotIn("matched_parcel_id", meta)

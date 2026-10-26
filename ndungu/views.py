@@ -18,6 +18,7 @@ from .services import (
     _parcels_by_alternate_id,
     build_combined_certificate,
     clean_source,
+    display_term,
     log_search,
     now_eat,
     pdf_filename,
@@ -133,9 +134,9 @@ class CertificatePDFView(APIView):
 
         # "Searched" is what the user typed; "Matched" is the record we resolved
         # to. Only carry Matched when it isn't a 1-to-1 match (e.g. name search).
-        searched_display = searched_term or shown
+        searched_display = display_term(searched_term) or shown
         meta = _metadata(request, searched_display, ref)
-        if shown and shown != searched_display:
+        if shown and shown.strip().lower() != searched_display.strip().lower():
             meta["matched_parcel_id"] = shown
         cert["metadata"] = meta
 
