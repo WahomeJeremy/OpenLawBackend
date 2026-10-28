@@ -24,11 +24,13 @@ from .services import (
     _parcels_by_alternate_id,
     build_combined_certificate,
     clean_source,
+    conversion_numbers,
     display_term,
     log_search,
     now_eat,
     pdf_filename,
     render_certificate_pdf,
+    resolve_via_conversion,
     run_search,
     source_status,
     suggestion_payload,
@@ -48,6 +50,14 @@ def _metadata(request, searched_id, reference):
             reverse("ndungu:verify", args=[reference])
         ),
     }
+
+
+def _litigation_by_other_number(conversion_info):
+    for num in conversion_numbers(conversion_info):
+        info = find_litigation(num)
+        if info:
+            return info
+    return None
 
 
 def _results_count(parcel, litigation_info, source):
@@ -78,6 +88,10 @@ class SearchView(APIView):
         # our "encumbrance" is Ndung'u OR ELC; conversion never decides it.
         conversion_info = find_conversions(q)
         litigation_info = find_litigation(q)
+        # The same parcel under its other LR number (old <-> new): Ndung'u and ELC
+        # records are filed under whichever number was current at the time.
+        result = resolve_via_conversion(result, conversion_info)
+        litigation_info = litigation_info or _litigation_by_other_number(conversion_info)
 
         if source == "elc" and not case_key and litigation_info \
                 and len(litigation_info["matches"]) > 1:
@@ -100,6 +114,8 @@ class SearchView(APIView):
 
         shown_id = (litigation_info["matches"][0]["case_citation"]
                     if case_key and litigation_info else q)
+        if result.get("via_conversion"):
+            shown_id = result["parcel"].parcel_id_clean  # the number the report filed it under
 
         if result["match_type"] in ("suggestions", "multiple") and source == "elc":
             # One journey, one dataset: an ELC search never opens Ndung'u suggestions.
@@ -171,9 +187,17 @@ class CertificatePDFView(APIView):
                 parcel = alt[0]
 
         source = clean_source(data.get("source"))
-        litigation_info = find_litigation(q)
+        conversion_info = find_conversions(q)
+        via_conversion = False
+        if parcel is None and not case_key:
+            parcel = resolve_via_conversion({"match_type": "none"}, conversion_info).get("parcel")
+            via_conversion = parcel is not None
+        litigation_info = find_litigation(q) or (
+            None if case_key else _litigation_by_other_number(conversion_info))
         shown_id = (litigation_info["matches"][0]["case_citation"]
                     if case_key and litigation_info else q)
+        if via_conversion:
+            shown_id = parcel.parcel_id_clean
         cert = build_combined_certificate(parcel, litigation_info, shown_id)
         cert["source"] = source  # the PDF is about this one dataset only
         # A completed manual review (token from the emailed link) upgrades the
@@ -194,7 +218,6 @@ class CertificatePDFView(APIView):
             meta["matched_parcel_id"] = shown
         cert["metadata"] = meta
 
-        conversion_info = find_conversions(q)
         if conversion_info:
             cert["conversion_info"] = conversion_info
 

@@ -754,6 +754,37 @@ class ElcCaseListTests(TestCase):
         self.assertFalse(data["elc"]["found"])
 
 
+class ConversionBridgesNumbersTests(TestCase):
+    """The Ndung'u report records the OLD LR number; searching the NEW one must still find it."""
+
+    def setUp(self):
+        from conversions.models import LrConversion
+
+        self.p = make_parcel("209/11642", display="209/11642")
+        make_finding(self.p, "r1", current_holder="National Social Security Fund")
+        LrConversion.objects.create(old_lr_no="209/11642", new_lr_number="NAIROBI/BLOCK 30/32")
+
+    def test_searching_the_new_number_finds_the_old_numbers_encumbrance(self):
+        for q in ("NAIROBI/BLOCK 30/32", "209/11642"):
+            data = self.client.get("/api/ndungu/search/", {"q": q}).json()
+            self.assertEqual(data["status"], "encumbrance_found", q)
+            self.assertTrue(data["ndungu"]["found"], q)
+            self.assertEqual(data["overview"]["parcel"], "209/11642")   # the number it is filed under
+
+    def test_the_pdf_by_the_new_number_covers_the_encumbrance(self):
+        resp = self.client.post("/api/ndungu/certificate/", data={"parcel_id": "NAIROBI/BLOCK 30/32", "searched_term": "NAIROBI/BLOCK 30/32"},
+                                content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("_Encumbrance_Found.pdf", resp["Content-Disposition"])
+
+    def test_an_unrelated_new_number_stays_nil(self):
+        from conversions.models import LrConversion
+
+        LrConversion.objects.create(old_lr_no="1/1", new_lr_number="NAIROBI/BLOCK 1/1")
+        data = self.client.get("/api/ndungu/search/", {"q": "NAIROBI/BLOCK 1/1"}).json()
+        self.assertFalse(data["ndungu"]["found"])
+
+
 class ElcNilStatementTests(TestCase):
     def test_parcels_stay_parcels_and_names_are_quoted(self):
         self.assertEqual(services.elc_nil_statement("209/11642"),

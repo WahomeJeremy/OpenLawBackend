@@ -169,6 +169,36 @@ def run_search(raw_query):
     return {"match_type": "none"}
 
 
+def conversion_numbers(conversion_info):
+    """Every other LR number this parcel is known by (old <-> new), from the gazetted
+    conversion. The Ndung'u report and the ELC log record whichever number was current
+    then, so a search by one number must also look under the other."""
+    seen, out = set(), []
+    for m in (conversion_info or {}).get("matches", []):
+        for num in (m["old_lr_no"], m["new_lr_number"]):
+            key = normalize_parcel_id(num)
+            if key and key not in seen:
+                seen.add(key)
+                out.append(num)
+    return out
+
+
+def resolve_via_conversion(result, conversion_info):
+    """If a search found no exact Ndung'u parcel but the term is one side of a gazetted
+    LR conversion, and exactly one parcel carries the other number, use that parcel
+    (otherwise 'no encumbrance' would be certified for a parcel that has one)."""
+    if result["match_type"] == "exact":
+        return result
+    parcels = {}
+    for num in conversion_numbers(conversion_info):
+        r = run_search(num)
+        if r["match_type"] == "exact":
+            parcels[r["parcel"].pk] = r["parcel"]
+    if len(parcels) == 1:
+        return {"match_type": "exact", "parcel": next(iter(parcels.values())), "via_conversion": True}
+    return result
+
+
 def _clean_label(s):
     """Strip whitespace and stray leading/trailing commas from a display value."""
     return (s or "").strip().strip(",").strip()
