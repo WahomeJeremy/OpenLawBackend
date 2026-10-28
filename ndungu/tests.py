@@ -692,6 +692,62 @@ class JourneysDoNotMixTests(TestCase):
             self.assertTrue(data["ndungu"]["found"], source)
 
 
+class ElcCaseListTests(TestCase):
+    """A search matching several ELC cases lists them; one case opens its own certificate."""
+
+    def setUp(self):
+        from litigation.models import ElcCase
+
+        self.a = ElcCase.objects.create(case_citation="Karura Residents v Kenya Forest Service [2021] KEELC 1 (KLR)",
+                                        parties="KARURA RESIDENTS; KENYA FOREST SERVICE", county="Nairobi",
+                                        court_station="Milimani", url_link="http://x/1", outcome_status="Dismissed")
+        self.b = ElcCase.objects.create(case_citation="Karura Estate v Njoroge [2022] KEELC 2 (KLR)",
+                                        parties="KARURA ESTATE; NJOROGE", county="Nairobi")
+
+    def _get(self, q, source="elc"):
+        return self.client.get("/api/ndungu/search/", {"q": q, "source": source}).json()
+
+    def test_several_cases_are_listed_without_their_detail(self):
+        data = self._get("Karura")
+        self.assertEqual(data["status"], "suggestions")
+        self.assertEqual(data["list_kind"], "elc")
+        self.assertEqual(len(data["suggestions"]), 2)
+        first = data["suggestions"][0]
+        self.assertEqual(set(first), {"parcel_id", "display", "context"})
+        self.assertNotIn("litigation_info", data)
+        self.assertNotIn("Dismissed", str(data))
+
+    def test_the_list_is_logged_as_suggestions_for_the_elc_dataset(self):
+        data = self._get("Karura")
+        log = CertificateLog.objects.get(certificate_reference=data["metadata"]["certificate_reference"])
+        self.assertEqual((log.dataset_source, log.status), ("elc", "suggestions"))
+
+    def test_picking_one_opens_a_certificate_for_that_case_only(self):
+        key = self._get("Karura")["suggestions"][0]["parcel_id"]
+        data = self._get(key)
+        self.assertEqual(data["status"], "encumbrance_found")
+        self.assertEqual(len(data["elc"]["matches"]), 1)
+        self.assertEqual(data["elc"]["match_basis"], "parties")   # keeps the name caution
+        self.assertEqual(data["overview"]["parcel"], data["elc"]["matches"][0]["case_citation"])
+
+    def test_the_pdf_for_a_picked_case_covers_that_case_only(self):
+        key = self._get("Karura")["suggestions"][0]["parcel_id"]
+        resp = self.client.post("/api/ndungu/certificate/", data={"parcel_id": key, "searched_term": "karura", "source": "elc"},
+                                content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.content.startswith(b"%PDF"))
+
+    def test_a_single_case_is_not_listed(self):
+        self.assertEqual(self._get("Karura Estate")["status"], "encumbrance_found")
+
+    def test_ndungu_searches_are_not_affected(self):
+        self.assertNotEqual(self._get("Karura", source="ndungu").get("list_kind"), "elc")
+
+    def test_an_unknown_case_key_is_a_nil_result_not_an_error(self):
+        data = self._get("elc-case:999999")
+        self.assertFalse(data["elc"]["found"])
+
+
 class ElcNilStatementTests(TestCase):
     def test_parcels_stay_parcels_and_names_are_quoted(self):
         self.assertEqual(services.elc_nil_statement("209/11642"),

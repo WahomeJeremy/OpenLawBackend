@@ -144,8 +144,19 @@ def format_decision_date(raw):
     return raw
 
 
-def _citation_payload(case, matched_identifier=""):
+# A single case, addressed from a list of several: "elc-case:<pk>" plus how the list
+# found it -- ":p" (party name) or ":i:<normalized parcel>" (identifier) -- so the one
+# case keeps the matched identifier / name caution it was listed with.
+_CASE_KEY = re.compile(r"^elc-case:(\d+)(?::(p)|:i:(.+))?$")
+
+
+def is_case_key(term):
+    return bool(_CASE_KEY.match((term or "").strip()))
+
+
+def _citation_payload(case, matched_identifier="", key_suffix=""):
     return {
+        "case_key": f"elc-case:{case.pk}{key_suffix}",
         "case_citation": case.case_citation,
         "matched_identifier": matched_identifier,
         "url_link": case.url_link,
@@ -198,11 +209,34 @@ def _find_by_party(raw_query):
         return None
     return {
         "disclaimer": DISCLAIMER,
-        "matches": [_citation_payload(c) for c in hits[:MAX_NAME_MATCHES]],
+        "matches": [_citation_payload(c, key_suffix=":p") for c in hits[:MAX_NAME_MATCHES]],
         "match_basis": "parties",
         "total": len(hits),
         "truncated": len(hits) > MAX_NAME_MATCHES,
     }
+
+
+def _find_one_case(pk, by_party, norm_identifier):
+    """The one case a list entry points at (see _CASE_KEY)."""
+    case = ElcCase.objects.filter(pk=pk).first()
+    if case is None:
+        return None
+    ident = ""
+    if norm_identifier:
+        ident = next((i.raw_identifier for i in case.identifiers.all()
+                      if i.normalized_identifier == norm_identifier), "")
+    suffix = ":p" if by_party else (f":i:{norm_identifier}" if norm_identifier else "")
+    return {"disclaimer": DISCLAIMER, "matches": [_citation_payload(case, ident, suffix)],
+            "match_basis": "parties" if by_party else "identifier",
+            "total": 1, "truncated": False}
+
+
+def case_list_item(m):
+    """One line of the list shown when a search matches several cases: the citation
+    and where/when, none of the case detail."""
+    context = " \u00b7 ".join(x for x in (m.get("county"), m.get("court_station"),
+                                          m.get("judgment_date")) if x)
+    return {"parcel_id": m["case_key"], "display": m["case_citation"], "context": context}
 
 
 def find_litigation(raw_query):
@@ -212,6 +246,10 @@ def find_litigation(raw_query):
     name or entity that matches no identifier is matched against the cases'
     parties. Returns a payload dict (`matches`, `disclaimer`, `match_basis`,
     `total`, `truncated`), or None if nothing matched."""
+    key = _CASE_KEY.match((raw_query or "").strip())
+    if key:
+        return _find_one_case(*key.groups())
+
     q = normalize_parcel_id(raw_query)
     if not q:
         return None
@@ -225,7 +263,7 @@ def find_litigation(raw_query):
     for c in cases:
         ident = next((i.raw_identifier for i in c.identifiers.all()
                       if i.normalized_identifier == q), "")
-        matches.append(_citation_payload(c, ident))
+        matches.append(_citation_payload(c, ident, f":i:{q}"))
     if matches:
         return {"disclaimer": DISCLAIMER, "matches": matches, "match_basis": "identifier",
                 "total": len(matches), "truncated": False}

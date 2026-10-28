@@ -11,7 +11,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from conversions.services import find_conversions
-from litigation.services import active_review, find_litigation, review_payload
+from litigation.services import (
+    active_review,
+    case_list_item,
+    find_litigation,
+    is_case_key,
+    review_payload,
+)
 
 from .models import CertificateLog, Parcel, normalize_parcel_id
 from .services import (
@@ -57,12 +63,35 @@ class SearchView(APIView):
 
         normalized = normalize_parcel_id(q)
         source = clean_source(request.query_params.get("source"))
-        result = run_search(q)
+        case_key = is_case_key(q)
+        result = {"match_type": "none"} if case_key else run_search(q)
         # LR-conversion stays pure reference data, independent of the verdict.
         # ELC litigation now DOES factor into the verdict, alongside Ndung'u --
         # our "encumbrance" is Ndung'u OR ELC; conversion never decides it.
         conversion_info = find_conversions(q)
         litigation_info = find_litigation(q)
+
+        if source == "elc" and not case_key and litigation_info \
+                and len(litigation_info["matches"]) > 1:
+            # Several cases: list them (citation only) and let the user open one,
+            # exactly as Ndung'u lists parcels. The certificate is per case.
+            total = litigation_info["total"]
+            ref = log_search(q, normalized, total, "suggestions", dataset_source=source)
+            note = (f" Showing the first {len(litigation_info['matches'])}; add a word to narrow it."
+                    if litigation_info["truncated"] else "")
+            payload = {
+                "status": "suggestions",
+                "list_kind": "elc",
+                "metadata": _metadata(request, q, ref),
+                "message": f"{total} ELC cases match this search. Select the one you want to open.{note}",
+                "suggestions": [case_list_item(m) for m in litigation_info["matches"]],
+            }
+            if conversion_info:
+                payload["conversion_info"] = conversion_info
+            return Response(payload)
+
+        shown_id = (litigation_info["matches"][0]["case_citation"]
+                    if case_key and litigation_info else q)
 
         if result["match_type"] in ("suggestions", "multiple") and source == "elc":
             # One journey, one dataset: an ELC search never opens Ndung'u suggestions.
@@ -97,7 +126,7 @@ class SearchView(APIView):
             return Response(payload)
 
         parcel = result["parcel"] if result["match_type"] == "exact" else None
-        combined = build_combined_certificate(parcel, litigation_info, q)
+        combined = build_combined_certificate(parcel, litigation_info, shown_id)
 
         shown = combined["overview"]["parcel"]
         count = parcel.findings.count() if parcel else 0
@@ -123,10 +152,11 @@ class CertificatePDFView(APIView):
             )
 
         normalized = normalize_parcel_id(q)
-        parcel = Parcel.objects.filter(
+        case_key = is_case_key(q)
+        parcel = None if case_key else Parcel.objects.filter(
             Q(normalized_lr=normalized) | Q(parcel_id_clean__iexact=q)
         ).first()
-        if parcel is None:
+        if parcel is None and not case_key:
             # Resolve Cf / Original / secondary-LR references the same way search does.
             alt = _parcels_by_alternate_id(q)
             if len(alt) == 1:
@@ -134,7 +164,9 @@ class CertificatePDFView(APIView):
 
         source = clean_source(data.get("source"))
         litigation_info = find_litigation(q)
-        cert = build_combined_certificate(parcel, litigation_info, q)
+        shown_id = (litigation_info["matches"][0]["case_citation"]
+                    if case_key and litigation_info else q)
+        cert = build_combined_certificate(parcel, litigation_info, shown_id)
         cert["source"] = source  # the PDF is about this one dataset only
         # A completed manual review (token from the emailed link) upgrades the
         # litigation certificate's wording; ignored if it was for another parcel.
