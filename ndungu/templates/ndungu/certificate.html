@@ -166,11 +166,12 @@
 
 
   .section.disc { page-break-inside: avoid; break-inside: avoid; text-align: center; }
-  /* Faint gold rule that fades out at both ends, as above the disclaimer in the results modal. */
-  .disc-rule { height: 0.9pt; margin: 0 0 10pt; background: linear-gradient(to right, rgba(201,162,39,0), rgba(201,162,39,0.65), rgba(201,162,39,0)); }
-  .disc-spacer { height: 78pt; }
+  /* A short, faint gold hairline above a small, quiet disclaimer (as in the results modal). */
+  .disc-rule { height: 0.5pt; width: 40%; margin: 0 auto 9pt; background: rgba(201,162,39,0.55); }
+  .section.disc h2.sec { font-size: 8pt; line-height: 11pt; letter-spacing: 1.4pt; text-transform: uppercase; color: #4A5468; margin-bottom: 4pt; }
+  .disc-spacer { height: 60pt; }
   .section.disc.pinned { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
-  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
+  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 8.5pt; line-height: 12.5pt; color: #4A5468; }
   ol.disclaimer li { margin-bottom: 4.5pt; }
   .elc .disc h2.sec { margin-bottom: 8.9pt; }
 
