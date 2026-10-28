@@ -17,13 +17,14 @@ EAT = timezone(timedelta(hours=3))  # East Africa Time (UTC+3)
 
 
 def scope_statement():
-    """Live scope line for the NIL certificate (real record count)."""
-    count = Finding.objects.count()
+    """Scope line for the NIL certificate. No record count: the index grows."""
     return (
-        f"Searched {count:,} records across the Ndung'u Report "
+        "Searched records across the Ndung'u Report "
         "(2004 Commission of Inquiry), covering flagged parcels, schools, "
-        "corporations and other entities."
+        "corporations and other entities indexed by Landledger."
     )
+
+
 DISCLAIMER = (
     "Based on the 2004 Ndung'u Report (Commission of Inquiry into the "
     "Illegal/Irregular Allocation of Public Land). For historical due diligence "
