@@ -3,11 +3,16 @@
 GET  /api/ndungu/search/?q=...      -> structured certificate JSON + ledger token
 GET  /api/ndungu/verify/<ref>/      -> resolve a reference against the audit ledger
 """
+from django.conf import settings
+from django.core.mail import send_mail
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.urls import reverse
 from rest_framework import status as http_status
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from conversions.services import find_conversions
@@ -233,6 +238,57 @@ class CertificatePDFView(APIView):
         resp = HttpResponse(pdf, content_type="application/pdf")
         resp["Content-Disposition"] = f'attachment; filename="{filename}"'
         return resp
+
+
+class PageRequestThrottle(AnonRateThrottle):
+    rate = "10/hour"  # public, unauthenticated, and it sends an email
+
+
+class PageRequestView(APIView):
+    """POST a certificate reference + how to reach the user -> emails support the
+    request for the report pages behind that certificate. Nothing is stored; the
+    reference, what was searched and what it matched go in the email."""
+
+    throttle_classes = [PageRequestThrottle]
+
+    def post(self, request):
+        data = request.data or {}
+        reference = (data.get("certificate_reference") or "").strip()
+        contact = (data.get("contact") or "").strip()[:200]
+        if not contact:
+            return Response({"detail": "Enter an email address or phone number."},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        if "@" in contact:
+            try:
+                validate_email(contact)
+            except ValidationError:
+                return Response({"detail": "Enter a valid email address."},
+                                status=http_status.HTTP_400_BAD_REQUEST)
+        log = CertificateLog.objects.filter(certificate_reference=reference).first()
+        if log is None:
+            return Response({"detail": "Unknown certificate reference."},
+                            status=http_status.HTTP_404_NOT_FOUND)
+        searched = (data.get("searched") or "").strip()[:300] or log.searched_parcel_id
+        matched = (data.get("matched") or "").strip()[:300] or log.searched_parcel_id
+        pages = (data.get("pages") or "").strip()[:300]
+        try:
+            send_mail(
+                subject=f"Report pages requested: {reference}",
+                message=(
+                    f"Certificate reference: {reference}\n"
+                    f"Searched: {searched}\n"
+                    f"Matched: {matched}\n"
+                    f"Report pages: {pages or '-'}\n"
+                    f"Contact: {contact}\n"
+                ),
+                from_email=None, recipient_list=[settings.SUPPORT_EMAIL],
+            )
+        except Exception:  # the request must not fail over a mail problem; it is logged
+            import logging
+            logging.getLogger(__name__).exception("Could not email support about %s", reference)
+            return Response({"detail": "We couldn't send your request just now. Please try again."},
+                            status=http_status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({"sent": True}, status=http_status.HTTP_201_CREATED)
 
 
 class VerifyView(APIView):

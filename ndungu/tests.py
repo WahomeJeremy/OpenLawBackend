@@ -1,6 +1,7 @@
 """Unit tests for the Ndung'u encumbrance engine (models, services, API)."""
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 
@@ -823,6 +824,38 @@ class RequestAPageCalloutTests(TestCase):
         meta = {"searched_parcel_id": "209/11642", "certificate_reference": "NDR-1", "generated_display": "x"}
         html = render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
         self.assertNotIn("Request a copy of the relevant page", html)
+
+
+class PageRequestTests(TestCase):
+    """The user leaves an email/phone; support gets the reference, what was searched and matched."""
+
+    def setUp(self):
+        from django.core import mail  # noqa: F401
+
+        self.ref = services.log_search("209/11642", "209/11642", 2, "encumbrance_found")
+
+    def _post(self, **kw):
+        body = {"certificate_reference": self.ref, "contact": "a@b.co", "searched": "Mary Kaittany",
+                "matched": "11927/8", "pages": "Vol I, Page 60"}
+        body.update(kw)
+        return self.client.post("/api/ndungu/request-pages/", data=body, content_type="application/json")
+
+    def test_emails_support_with_reference_searched_matched_and_contact(self):
+        from django.core import mail
+
+        self.assertEqual(self._post().status_code, 201)
+        msg = mail.outbox[0]
+        self.assertEqual(msg.to, [settings.SUPPORT_EMAIL])
+        for want in (self.ref, "Searched: Mary Kaittany", "Matched: 11927/8", "Vol I, Page 60", "Contact: a@b.co"):
+            self.assertIn(want, msg.body)
+
+    def test_needs_a_contact_and_a_real_reference(self):
+        self.assertEqual(self._post(contact="").status_code, 400)
+        self.assertEqual(self._post(contact="not@valid").status_code, 400)
+        self.assertEqual(self._post(certificate_reference="NDR-NOPE").status_code, 404)
+
+    def test_a_phone_number_is_accepted(self):
+        self.assertEqual(self._post(contact="0712345678").status_code, 201)
 
 
 class ContactNumberTests(TestCase):
