@@ -44,7 +44,7 @@
   .top td { vertical-align: top; padding: 0; }
   .top .side { width: 90pt; }
   .top .mid { text-align: center; }
-  .top .mid img { height: 34pt; width: auto; margin-top: 11pt; }
+  .top .mid img { height: 26pt; width: auto; margin-top: 15pt; }
   .top .qr { text-align: right; }
   .top .qr img { width: 63pt; height: 63pt; display: block; margin-left: auto; }
   .top .qr .cap { margin-top: 5.2pt; font-size: 9.75pt; line-height: 12pt; letter-spacing: 0.45pt; white-space: nowrap;
@@ -117,7 +117,7 @@
   /* Timeline and recommendation read as plain ruled text, not boxes. */
   .plain { padding: 0; }
   .keep { page-break-inside: avoid; break-inside: avoid; }
-  .box.statement { color: #1C1F29; page-break-inside: avoid; break-inside: avoid; }
+  .box.statement { border: 0; background: none; padding: 0; color: #1C1F29; page-break-inside: avoid; break-inside: avoid; }
   p.scope { margin: 7pt 0 0; font-size: 9.75pt; line-height: 15pt; color: #293042; }
 
   table.fields { width: 100%; border-collapse: collapse; }
@@ -146,18 +146,19 @@
 
   /* ---- ELC schedule ---- */
   table.cases { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  table.cases th { background: #EEF0F4; border: 0.8pt solid #9AA3B5; padding: 6.5pt 8.2pt 6pt; text-align: left;
+  table.cases th { border: 0; border-bottom: 0.8pt solid #1F2A44; padding: 6.5pt 8.2pt 6pt; text-align: left;
     font-size: 9pt; line-height: 12.5pt; letter-spacing: 0.9pt; text-transform: uppercase; color: #3B4257; }
-  table.cases td { border: 0.8pt solid #9AA3B5; padding: 8pt 8.2pt; vertical-align: top;
+  table.cases td { border: 0; padding: 8pt 8.2pt; vertical-align: top;
     font-size: 9.75pt; line-height: 14pt; color: #1C1F29; }
   table.cases .c-no { width: 37.5pt; } table.cases .c-case { width: 212.2pt; }
   table.cases .c-county { width: 68.3pt; } table.cases .c-decision { width: 93.7pt; }
   table.cases .c-outcome { width: 72.8pt; }
   table.cases tbody { page-break-inside: avoid; break-inside: avoid; }
+  table.cases tbody tr:first-child td { border-top: 0.5pt solid #D3D8E4; }
   table.cases .neutral { color: #3B4257; }
   table.cases td.detail { color: #293042; line-height: 14pt; }
   table.cases td.detail div + div { margin-top: 8pt; }
-  .nil { border: 0.8pt solid #9AA3B5; padding: 10.5pt 12pt; text-align: center; color: #3B4257; }
+  .nil { padding: 2pt 0; color: #3B4257; }
 
 
   .section.disc { page-break-inside: avoid; break-inside: avoid; }
