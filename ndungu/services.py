@@ -29,7 +29,7 @@ DISCLAIMER = (
     "Based on the 2004 Ndung'u Report (Commission of Inquiry into the "
     "Illegal/Irregular Allocation of Public Land). For historical due diligence "
     "only. Not a legal title or a substitute for an official Ministry of Lands "
-    "Registry search."
+    "Registry search. It does not constitute legal advice."
 )
 _ROMAN = {"1": "I", "2": "II", "3": "III"}
 

@@ -166,6 +166,8 @@
 
 
   .section.disc { page-break-inside: avoid; break-inside: avoid; }
+  .disc-spacer { height: 62pt; }
+  .section.disc.pinned { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
   ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
   ol.disclaimer li { margin-bottom: 4.5pt; }
   .elc .disc h2.sec { margin-bottom: 8.9pt; }
@@ -386,7 +388,9 @@
   {% include "ndungu/_conversion.html" %}
     {% endif %}
 
-    <div class="section disc">
+    {% comment %}Ndung'u: the disclaimer closes the last page, just above the footer rule; the spacer keeps the content clear of it.{% endcomment %}
+    <div class="disc-spacer"></div>
+    <div class="section disc pinned">
       <h2 class="sec">Disclaimer</h2>
       <ol class="disclaimer">
         <li>{{ cert.disclaimer }}</li>
