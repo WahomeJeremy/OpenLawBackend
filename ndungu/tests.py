@@ -391,8 +391,8 @@ class SourceAwareTests(TestCase):
     def test_pdf_download_filenames_follow_the_convention(self):
         # Ndung'u: matched parcel + outcome. ELC: the search term + outcome.
         for q, src, want in [
-            ("209/11642", "ndungu", "Ndungu_Report_Search_Certificate_209-11642_Encumbrance_Found.pdf"),
-            ("77/7", "ndungu", "Ndungu_Report_Search_Certificate_77-7_No_Encumbrance.pdf"),
+            ("209/11642", "ndungu", "Ndungu_Report_Search_Certificate_209-11642_Adverse_Record_Found.pdf"),
+            ("77/7", "ndungu", "Ndungu_Report_Search_Certificate_77-7_No_Adverse_Record.pdf"),
             ("209/11642", "elc", "Litigation_Search_Certificate_209-11642_Litigation_Found.pdf"),
             ("77/7", "elc", "Litigation_Search_Certificate_77-7_No_Record.pdf"),
         ]:
@@ -775,7 +775,7 @@ class ConversionBridgesNumbersTests(TestCase):
         resp = self.client.post("/api/ndungu/certificate/", data={"parcel_id": "NAIROBI/BLOCK 30/32", "searched_term": "NAIROBI/BLOCK 30/32"},
                                 content_type="application/json")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("_Encumbrance_Found.pdf", resp["Content-Disposition"])
+        self.assertIn("_Adverse_Record_Found.pdf", resp["Content-Disposition"])
 
     def test_an_unrelated_new_number_stays_nil(self):
         from conversions.models import LrConversion

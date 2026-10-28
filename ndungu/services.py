@@ -351,7 +351,7 @@ def build_certificate(parcel, searched_id):
     also_recorded_as = _associated_references(findings, shown_id)
 
     overview = {
-        "banner": "Encumbrance Found",
+        "banner": "Adverse Record Found",
         "parcel": shown_id,
         "records_matched": len(findings),
         "volumes": roman,
@@ -456,7 +456,7 @@ def build_combined_certificate(parcel, litigation_info, shown_id, ndungu_suggest
     return {
         "status": overall_status,
         "overview": {
-            "banner": "Encumbrance Found" if overall_status == "encumbrance_found" else "No Encumbrance Recorded",
+            "banner": "Adverse Record Found" if overall_status == "encumbrance_found" else "No Adverse Record Found",
             "parcel": overview_parcel,
             "summary": _combined_summary(ndungu_found, elc_found, ndungu_cert, litigation_info),
         },
@@ -480,7 +480,7 @@ def build_nil_certificate(searched_id):
     return {
         "status": "no_encumbrance",
         "overview": {
-            "banner": "No Encumbrance Recorded",
+            "banner": "No Adverse Record Found",
             "parcel": searched_id,
             "records_matched": 0,
         },
@@ -622,13 +622,13 @@ def contact_links(reference, topic):
 
 
 def pdf_filename(cert, searched, source):
-    """e.g. Ndungu_Report_Search_Certificate_2-267_No_Encumbrance.pdf"""
+    """e.g. Ndungu_Report_Search_Certificate_2-267_No_Adverse_Record.pdf"""
     if source == "elc":
         term, kind = searched, ("Litigation_Found" if cert["elc"]["found"] else "No_Record")
         prefix = "Litigation_Search_Certificate"
     else:
         term = cert["overview"]["parcel"]
-        kind = "Encumbrance_Found" if cert["ndungu"]["found"] else "No_Encumbrance"
+        kind = "Adverse_Record_Found" if cert["ndungu"]["found"] else "No_Adverse_Record"
         prefix = "Ndungu_Report_Search_Certificate"
     safe = re.sub(r"[^A-Za-z0-9\-]", "", (term or "").strip().replace("/", "-").replace(" ", "")) or "Search"
     return f"{prefix}_{safe}_{kind}.pdf"
