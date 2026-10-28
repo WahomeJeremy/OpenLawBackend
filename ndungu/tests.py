@@ -737,6 +737,12 @@ class ElcCaseListTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.content.startswith(b"%PDF"))
 
+    def test_the_ledger_counts_the_elc_cases_matched(self):
+        key = self._get("Karura")["suggestions"][0]["parcel_id"]
+        data = self._get(key)
+        ref = data["metadata"]["certificate_reference"]
+        self.assertEqual(self.client.get(f"/api/ndungu/verify/{ref}/").json()["results_count"], 1)
+
     def test_a_single_case_is_not_listed(self):
         self.assertEqual(self._get("Karura Estate")["status"], "encumbrance_found")
 

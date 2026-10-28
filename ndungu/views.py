@@ -50,6 +50,14 @@ def _metadata(request, searched_id, reference):
     }
 
 
+def _results_count(parcel, litigation_info, source):
+    """'Records matched' on the ledger: Ndung'u findings for a Ndung'u certificate,
+    ELC cases for an ELC one (an ELC search has no parcel, so it was always 0)."""
+    if source == "elc":
+        return litigation_info["total"] if litigation_info else 0
+    return parcel.findings.count() if parcel else 0
+
+
 class SearchView(APIView):
     """Primary search -> certificate generation. Logs every execution."""
 
@@ -129,7 +137,7 @@ class SearchView(APIView):
         combined = build_combined_certificate(parcel, litigation_info, shown_id)
 
         shown = combined["overview"]["parcel"]
-        count = parcel.findings.count() if parcel else 0
+        count = _results_count(parcel, litigation_info, source)
         ref = log_search(shown, normalized, count, source_status(combined, source),
                          parcel, dataset_source=source)
         combined["metadata"] = _metadata(request, shown, ref)
@@ -174,7 +182,7 @@ class CertificatePDFView(APIView):
         if review:
             cert["review"] = review_payload(review)
         shown = cert["overview"]["parcel"]
-        count = parcel.findings.count() if parcel else 0
+        count = _results_count(parcel, litigation_info, source)
         ref = log_search(shown, normalized, count, source_status(cert, source),
                          parcel, dataset_source=source)
 
