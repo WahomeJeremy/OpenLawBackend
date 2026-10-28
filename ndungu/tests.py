@@ -811,9 +811,9 @@ class DisclaimerNeverCrossesJourneysTests(TestCase):
 
 
 class RequestAPageCalloutTests(TestCase):
-    """The 'request a copy of the relevant page' line offers Email and WhatsApp only."""
+    """Asking for the report's pages is offered in the results modal, not on the certificate."""
 
-    def test_callout_has_email_and_whatsapp_but_no_form(self):
+    def test_the_certificate_no_longer_carries_the_request_a_page_line(self):
         from django.template.loader import render_to_string
 
         p = make_parcel("209/11642", display="209/11642")
@@ -822,11 +822,7 @@ class RequestAPageCalloutTests(TestCase):
         cert["source"] = "ndungu"
         meta = {"searched_parcel_id": "209/11642", "certificate_reference": "NDR-1", "generated_display": "x"}
         html = render_to_string("ndungu/certificate.html", services.build_pdf_context(cert, meta))
-        self.assertIn("Request a copy of the relevant page of the report", html)
-        self.assertIn(">Email</a> or <a", html)
-        self.assertIn(">WhatsApp</a>.", html)
-        self.assertNotIn(">Form</a>", html)
-        self.assertNotIn("this Form", html)
+        self.assertNotIn("Request a copy of the relevant page", html)
 
 
 class ContactNumberTests(TestCase):
