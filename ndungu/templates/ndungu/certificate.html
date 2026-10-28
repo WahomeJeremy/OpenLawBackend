@@ -88,7 +88,8 @@
   /* Litigation banners are top-aligned in the samples (eyebrow 19.7pt below the top edge). */
   table.banner.h3 td.body, table.banner.h4 td.body { vertical-align: top; padding-top: 15.3pt; }
   table.banner.h3 td.ico, table.banner.h4 td.ico { vertical-align: top; padding-top: 10pt; }
-  table.banner.h2 .s { margin-top: 6.7pt; }
+  table.banner.h2 .count .in { margin: 8pt 0; }
+  table.banner.h2 .count .n { margin-bottom: 4pt; }
   table.banner .t { font-size: 16.5pt; line-height: 20pt; text-transform: uppercase; }
   table.banner.found .t { color: #7A300A; }
   table.banner.none  .t { color: #173B69; }
@@ -309,8 +310,8 @@
         <td class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5"/><circle cx="12" cy="17.8" r="0.5" fill="currentColor"/></svg></td>
         <td class="body">
           <div class="t">Adverse record found</div>
-          <div class="s">{{ cert.ndungu.tier_b_timeline|length }} {{ cert.ndungu.tier_b_timeline|length|pluralize:"entry,entries" }} found</div>
         </td>
+        <td class="count"><div class="in"><div class="n">{{ cert.ndungu.tier_b_timeline|length }}</div><div class="c">{{ cert.ndungu.tier_b_timeline|length|pluralize:"Entry,Entries" }}</div></div></td>
       </tr></table>
 
       <div class="section">
