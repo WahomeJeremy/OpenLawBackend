@@ -44,7 +44,7 @@
   .top td { vertical-align: top; padding: 0; }
   .top .side { width: 90pt; }
   .top .mid { text-align: center; }
-  .top .mid img { height: 46pt; width: auto; margin-top: 5.5pt; }
+  .top .mid img { height: 34pt; width: auto; margin-top: 11pt; }
   .top .qr { text-align: right; }
   .top .qr img { width: 63pt; height: 63pt; display: block; margin-left: auto; }
   .top .qr .cap { margin-top: 5.2pt; font-size: 9.75pt; line-height: 12pt; letter-spacing: 0.45pt; white-space: nowrap;
@@ -114,6 +114,9 @@
   .section { margin-bottom: 13.4pt; }
   .box { border: 0.8pt solid #9AA3B5; padding: 10pt 11pt; background: #FDFCF8; }
   .box.tl { padding: 6pt 11pt 5.2pt; }
+  /* Timeline and recommendation read as plain ruled text, not boxes. */
+  .plain { padding: 0; }
+  .keep { page-break-inside: avoid; break-inside: avoid; }
   .box.statement { color: #1C1F29; page-break-inside: avoid; break-inside: avoid; }
   p.scope { margin: 7pt 0 0; font-size: 9.75pt; line-height: 15pt; color: #293042; }
 
@@ -326,7 +329,7 @@
 
       <div class="section">
         <h2 class="sec">2. Adverse record timeline</h2>
-        <div class="box tl">
+        <div class="plain">
           {% for e in cert.ndungu.tier_b_timeline %}
             <div class="event">
               <div class="cat">{{ forloop.counter }}. {{ e.flag_category|underscore_to_title }}</div>
@@ -346,9 +349,9 @@
         </div>
       </div>
 
-      <div class="section">
+      <div class="section keep">
         <h2 class="sec">3. Commission recommendation</h2>
-        <div class="box tl">
+        <div class="plain">
           <div class="rec-action">Action: <span class="alert">{{ cert.ndungu.tier_c_recommendation.action|default:"—" }}</span></div>
           {% for q in cert.ndungu.tier_c_recommendation.raw_quotes %}
             <div class="quote">&ldquo;{{ q.quote }}&rdquo;<span class="cite">{{ q.citation }}</span></div>
