@@ -165,8 +165,10 @@
   .nil { padding: 2pt 0; color: #3B4257; }
 
 
-  .section.disc { page-break-inside: avoid; break-inside: avoid; }
-  .disc-spacer { height: 62pt; }
+  .section.disc { page-break-inside: avoid; break-inside: avoid; text-align: center; }
+  /* Faint gold rule that fades out at both ends, as above the disclaimer in the results modal. */
+  .disc-rule { height: 0.9pt; margin: 0 0 10pt; background: linear-gradient(to right, rgba(201,162,39,0), rgba(201,162,39,0.65), rgba(201,162,39,0)); }
+  .disc-spacer { height: 78pt; }
   .section.disc.pinned { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
   ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 9pt; line-height: 13.5pt; color: #293042; }
   ol.disclaimer li { margin-bottom: 4.5pt; }
@@ -300,6 +302,7 @@
   {% include "ndungu/_conversion.html" %}
 
     <div class="section disc">
+      <div class="disc-rule"></div>
       <h2 class="sec">Disclaimer</h2>
       <ol class="disclaimer">
         <li>1. Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd{% if index.as_of %} as of {{ index.as_of }}{% endif %}.</li>
@@ -391,6 +394,7 @@
     {% comment %}Ndung'u: the disclaimer closes the last page, just above the footer rule; the spacer keeps the content clear of it.{% endcomment %}
     <div class="disc-spacer"></div>
     <div class="section disc pinned">
+      <div class="disc-rule"></div>
       <h2 class="sec">Disclaimer</h2>
       <ol class="disclaimer">
         <li>{{ cert.disclaimer }}</li>
