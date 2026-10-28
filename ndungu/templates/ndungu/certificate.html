@@ -13,18 +13,18 @@
 
   @page {
     size: A4;
-    margin: 81pt 55.9pt 100.2pt 55.5pt;
+    margin: 73pt 55.9pt 91.2pt 55.5pt;
     background: #FDFCF8;
     @bottom-left {
       content: "{{ links.site|cut:'https://'|cut:'http://'|default:'legal.ke' }}";
-      width: 50%; vertical-align: top; padding-top: 9pt; margin-top: 33pt;
+      width: 50%; vertical-align: top; padding-top: 9pt; margin-top: 24pt;
       border-top: 0.8pt solid #1F2A44;
       font-family: "Didact Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
       font-size: {% if cert.source == 'elc' %}9pt{% else %}9.75pt{% endif %}; color: #1F2A44;
     }
     @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
-      width: 50%; vertical-align: top; padding-top: 9pt; margin-top: 33pt; text-align: right;
+      width: 50%; vertical-align: top; padding-top: 9pt; margin-top: 24pt; text-align: right;
       border-top: 0.8pt solid #1F2A44;
       font-family: "Didact Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
       font-size: {% if cert.source == 'elc' %}9pt{% else %}9.75pt{% endif %}; color: #1F2A44;
@@ -36,13 +36,13 @@
   a { color: #1F3B6B; text-decoration: underline; }
 
   /* Double-line page frame (20pt in from the page edge), repeated on every page. */
-  .frame { position: fixed; top: -61pt; left: -35.5pt; right: -35.9pt; bottom: -80.7pt;
+  .frame { position: fixed; top: -53pt; left: -35.5pt; right: -35.9pt; bottom: -71.7pt;
     border: 3pt double #1F2A44; }
 
   /* ---- header ---- */
-  /* The page's top margin is 30pt deeper than the design so continuation pages have room under
+  /* The page's top margin is 22pt deeper than the design so continuation pages have room under
      the frame; the first page's header is pulled back up to its designed position. */
-  .top { width: 100%; border-collapse: collapse; margin-top: -30pt; }
+  .top { width: 100%; border-collapse: collapse; margin-top: -22pt; }
   .top td { vertical-align: top; padding: 0; }
   .top .side { width: 90pt; }
   .top .mid { text-align: center; }
