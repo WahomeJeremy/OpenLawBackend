@@ -168,10 +168,10 @@
   .section.disc { page-break-inside: avoid; break-inside: avoid; text-align: center; }
   /* A short, faint gold hairline above a small, quiet disclaimer (as in the results modal). */
   .disc-rule { height: 0.5pt; width: 40%; margin: 0 auto 9pt; background: rgba(201,162,39,0.55); }
-  .section.disc h2.sec { font-size: 8pt; line-height: 11pt; letter-spacing: 1.4pt; text-transform: uppercase; color: #4A5468; margin-bottom: 4pt; }
+  .section.disc h2.sec { font-size: 7pt; line-height: 10pt; letter-spacing: 1.3pt; text-transform: uppercase; color: #4A5468; margin-bottom: 4pt; }
   .disc-spacer { height: 60pt; }
   .section.disc.pinned { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
-  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 8.5pt; line-height: 12.5pt; color: #4A5468; }
+  ol.disclaimer { margin: 0; padding: 0; list-style: none; font-size: 7.5pt; line-height: 11pt; color: #4A5468; }
   ol.disclaimer li { margin-bottom: 4.5pt; }
   .elc .disc h2.sec { margin-bottom: 8.9pt; }
 
@@ -307,7 +307,7 @@
       <h2 class="sec">Disclaimer</h2>
       <ol class="disclaimer">
         <li>1. Results are based on reported decisions of the Environment and Land Court (Nairobi &amp; Kajiado) currently indexed by Landledger Ltd{% if index.as_of %} as of {{ index.as_of }}{% endif %}.</li>
-        <li>2. This search complements, but does not replace, an official Lands Registry search. For legal advice, please consult an advocate.</li>
+        <li>2. This search complements, but does not replace, an official Lands Registry search, and does not constitute legal advice. For legal advice, please consult an advocate.</li>
         {% if cert.elc.match_basis == 'parties' %}<li>3. This result matches party names only. Different people or entities can share a name; confirm that each case concerns the party you mean.</li>{% endif %}
       </ol>
     </div>
